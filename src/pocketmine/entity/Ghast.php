@@ -21,54 +21,40 @@
 
 namespace pocketmine\entity;
 
-
-use pocketmine\event\entity\EntityDamageByEntityEvent;
-use pocketmine\item\Item as ItemItem;
-use pocketmine\item\enchantment\Enchantment;
-use pocketmine\network\Network;
 use pocketmine\network\protocol\AddEntityPacket;
 use pocketmine\Player;
+use pocketmine\block\Air;
+use pocketmine\block\Obsidian;
+use pocketmine\block\Block;
 use pocketmine\math\Vector3;
 use pocketmine\event\entity\EntityDamageEvent;
 
-class Zombie extends Monster{
-	const NETWORK_ID = 32;
+class Ghast extends Monster {
+	const NETWORK_ID = 41;
 
-	public $width = 0.6;
-	public $length = 0.6;
-	public $height = 1.8;
-
-	public $dropExp = [5, 5];
+	public $width = 6;
+	public $length = 6;
+	public $height = 6;
 	
-
-
-	
-	private $moveDirection = null; //移动方向
-	private $moveSpeed = 0.2; //移动速度
-	private $hated = false; //仇恨的玩家
-	private $tempTicker = 0;
-	private $tempTicking = false; //走出困境计时器
-	private $moveTicker = 0; //运动计时器
-	private $hate_r = 16; //仇恨半径
-	private $attack_r = 1.5; //攻击半径
-	private $fire_r = 1.3; //点燃半径
-	private $hateTicker = 0; //仇恨计时器
-
 	public function getName() : string{
-		return "Zombie";
+		return "Ghast";
 	}
-	
+
 	public function initEntity(){
-		$this->setMaxHealth(20);
 		parent::initEntity();
+		$this->setMaxHealth(1000);
+		$this->setHealth(1000);
+		$block = new Obsidian();
+		$level = $this->getLevel();
+		$this->getLevel()->setBlock(new Vector3(168, 71, 257), $block);
+		$this->getLevel()->setBlock(new Vector3(168, 72, 257), $block);
+		$this->setAIControl(false);
 	}
 	
-
-
 	public function spawnTo(Player $player){
 		$pk = new AddEntityPacket();
 		$pk->eid = $this->getId();
-		$pk->type = Zombie::NETWORK_ID;
+		$pk->type = Ghast::NETWORK_ID;
 		$pk->x = $this->x;
 		$pk->y = $this->y;
 		$pk->z = $this->z;
@@ -79,7 +65,23 @@ class Zombie extends Monster{
 		$pk->pitch = $this->pitch;
 		$pk->metadata = $this->dataProperties;
 		$player->dataPacket($pk);
-	
+
 		parent::spawnTo($player);
 	}
+	
+	public function kill(){
+		$block = new Air();
+		$this->getLevel()->setBlock(new Vector3(168, 71, 257), $block);
+		$this->getLevel()->setBlock(new Vector3(168, 72, 257), $block);
+		parent::kill();
+	}
+	
+	public function attack($damage, EntityDamageEvent $source){
+		parent::attack($damage, $source);
+		$h = $this->getHealth();
+		if ($h % 100 == 0) {
+			print "Ghast health remaining: $h \n";
+		}
+	}
+
 }
