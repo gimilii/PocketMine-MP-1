@@ -1,6 +1,6 @@
 <?php
 
-/**
+/*
  *
  *  ____            _        _   __  __ _                  __  __ ____
  * |  _ \ ___   ___| | _____| |_|  \/  (_)_ __   ___      |  \/  |  _ \
@@ -14,10 +14,12 @@
  * (at your option) any later version.
  *
  * @author PocketMine Team
- * @link   http://www.pocketmine.net/
+ * @link http://www.pocketmine.net/
  *
  *
- */
+*/
+
+declare(strict_types=1);
 
 namespace pocketmine\event\entity;
 
@@ -86,7 +88,7 @@ class EntityDamageEvent extends EntityEvent implements Cancellable{
 		}
 
 		if($entity->hasEffect(Effect::DAMAGE_RESISTANCE)){
-			$this->setDamage(-($this->getDamage(self::MODIFIER_BASE) * 0.20 * ($entity->getEffect(Effect::DAMAGE_RESISTANCE)->getAmplifier() + 1)), self::MODIFIER_RESISTANCE);
+			$this->setDamage(-($this->getDamage(self::MODIFIER_BASE) * 0.20 * $entity->getEffect(Effect::DAMAGE_RESISTANCE)->getEffectLevel()), self::MODIFIER_RESISTANCE);
 		}
 	}
 

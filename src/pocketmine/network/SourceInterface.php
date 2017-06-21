@@ -19,12 +19,14 @@
  *
 */
 
+declare(strict_types=1);
+
 /**
  * Network-related classes
  */
 namespace pocketmine\network;
 
-use pocketmine\network\protocol\DataPacket;
+use pocketmine\network\mcpe\protocol\DataPacket;
 use pocketmine\Player;
 
 /**

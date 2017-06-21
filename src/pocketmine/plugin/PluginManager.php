@@ -19,6 +19,8 @@
  *
 */
 
+declare(strict_types=1);
+
 namespace pocketmine\plugin;
 
 use pocketmine\command\defaults\TimingsCommand;
@@ -140,23 +142,35 @@ class PluginManager{
 	 * @param string         $path
 	 * @param PluginLoader[] $loaders
 	 *
-	 * @return Plugin
+	 * @return Plugin|null
 	 */
 	public function loadPlugin($path, $loaders = null){
 		foreach(($loaders === null ? $this->fileAssociations : $loaders) as $loader){
 			if(preg_match($loader->getPluginFilters(), basename($path)) > 0){
 				$description = $loader->getPluginDescription($path);
 				if($description instanceof PluginDescription){
-					if(($plugin = $loader->loadPlugin($path)) instanceof Plugin){
-						$this->plugins[$plugin->getDescription()->getName()] = $plugin;
+					try{
+						$description->checkRequiredExtensions();
+					}catch(PluginException $ex){
+						$this->server->getLogger()->error($ex->getMessage());
+						return null;
+					}
 
-						$pluginCommands = $this->parseYamlCommands($plugin);
+					try{
+						if(($plugin = $loader->loadPlugin($path)) instanceof Plugin){
+							$this->plugins[$plugin->getDescription()->getName()] = $plugin;
 
-						if(count($pluginCommands) > 0){
-							$this->commandMap->registerAll($plugin->getDescription()->getName(), $pluginCommands);
+							$pluginCommands = $this->parseYamlCommands($plugin);
+
+							if(count($pluginCommands) > 0){
+								$this->commandMap->registerAll($plugin->getDescription()->getName(), $pluginCommands);
+							}
+
+							return $plugin;
 						}
-
-						return $plugin;
+					}catch(\Throwable $e){
+						$this->server->getLogger()->logException($e);
+						return null;
 					}
 				}
 			}
@@ -754,8 +768,15 @@ class PluginManager{
 		if($class->isAbstract()){
 			throw new PluginException($event . " is an abstract Event");
 		}
-		if($class->getProperty("handlerList")->getDeclaringClass()->getName() !== $event){
-			throw new PluginException($event . " does not have a handler list");
+
+		if(!$class->hasProperty("handlerList") or ($property = $class->getProperty("handlerList"))->getDeclaringClass()->getName() !== $event){
+			throw new PluginException($event . " does not have a valid handler list");
+		}
+		if(!$property->isStatic()){
+			throw new PluginException($event . " handlerList property is not static");
+		}
+		if(!$property->isPublic()){
+			throw new PluginException($event . " handlerList property is not public");
 		}
 
 		if(!$plugin->isEnabled()){

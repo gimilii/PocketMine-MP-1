@@ -19,6 +19,8 @@
  *
 */
 
+declare(strict_types=1);
+
 namespace pocketmine\block;
 
 use pocketmine\entity\Entity;
@@ -35,6 +37,10 @@ class Water extends Liquid{
 
 	public function getName(){
 		return "Water";
+	}
+
+	public function getLightFilter() : int{
+		return 2;
 	}
 
 	public function onEntityCollide(Entity $entity){

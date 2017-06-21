@@ -19,11 +19,13 @@
  *
 */
 
+declare(strict_types=1);
+
 namespace pocketmine\inventory;
 
 use pocketmine\event\Timings;
 use pocketmine\item\Item;
-use pocketmine\network\protocol\CraftingDataPacket;
+use pocketmine\network\mcpe\protocol\CraftingDataPacket;
 use pocketmine\Server;
 use pocketmine\utils\Config;
 use pocketmine\utils\MainLogger;
@@ -295,7 +297,7 @@ class CraftingManager{
 	 * @param Recipe $recipe
 	 */
 	public function registerRecipe(Recipe $recipe){
-		$recipe->setId(UUID::fromData(++self::$RECIPE_COUNT, $recipe->getResult()->getId(), $recipe->getResult()->getDamage(), $recipe->getResult()->getCount(), $recipe->getResult()->getCompoundTag()));
+		$recipe->setId(UUID::fromData((string) ++self::$RECIPE_COUNT, (string) $recipe->getResult()->getId(), (string) $recipe->getResult()->getDamage(), (string) $recipe->getResult()->getCount(), $recipe->getResult()->getCompoundTag()));
 
 		if($recipe instanceof ShapedRecipe){
 			$this->registerShapedRecipe($recipe);

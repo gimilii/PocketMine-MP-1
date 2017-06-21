@@ -19,6 +19,8 @@
  *
 */
 
+declare(strict_types=1);
+
 /**
  * Event related classes
  */
@@ -30,8 +32,6 @@ abstract class Event{
 	 * Any callable event must declare the static variable
 	 *
 	 * public static $handlerList = null;
-	 * public static $eventPool = [];
-	 * public static $nextEvent = 0;
 	 *
 	 * Not doing so will deny the proper event initialization
 	 */
