@@ -215,6 +215,11 @@ abstract class Entity extends Location implements Metadatable{
 		Entity::registerEntity(Squid::class);
 		Entity::registerEntity(Villager::class);
 		Entity::registerEntity(Zombie::class);
+		Entity::registerEntity(Creeper::class);
+		Entity::registerEntity(Skeleton::class);
+		Entity::registerEntity(Stray::class);
+		Entity::registerEntity(Husk::class);
+		Entity::registerEntity(Ghast::class);
 
 		Entity::registerEntity(Human::class, true);
 	}
@@ -909,7 +914,7 @@ abstract class Entity extends Location implements Metadatable{
 			return;
 		}
 
-		$this->setLastDamageCause($source);
+		$this->setLastDamageCause($source)
 
 		$damage = $source->getFinalDamage();
 

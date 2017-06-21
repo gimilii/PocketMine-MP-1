@@ -108,6 +108,8 @@ use pocketmine\utils\TextFormat;
 use pocketmine\utils\Utils;
 use pocketmine\utils\UUID;
 use pocketmine\utils\VersionString;
+use pocketmine\entity\ai\AIHolder;
+use pocketmine\tile\MobSpawner;
 
 /**
  * The class that manages everything
@@ -263,6 +265,11 @@ class Server{
 
 	/** @var Level */
 	private $levelDefault = null;
+	
+	public $aiConfig = [];
+	public $aiEnabled = false;
+	public $aiHolder = null;
+	
 
 	/**
 	 * @return string
@@ -1422,6 +1429,23 @@ class Server{
 			}
 			$this->config = new Config($this->dataPath . "pocketmine.yml", Config::YAML, []);
 
+			$this->aiEnabled = true;
+			$this->aiConfig = [
+				"cow" =>  true,
+				"chicken" => true,
+				"zombie" => true,
+				"skeleton" => true,
+				"pig" => true,
+				"sheep" => true,
+				"creeper" => true,
+				"irongolem" => true,
+				"snowgolem" => true,
+				"pigzombie" => true,
+				"creeperexplode" => false,
+				"mobgenerate" => false,
+			];
+			
+			
 			$this->logger->info("Loading server properties...");
 			$this->properties = new Config($this->dataPath . "server.properties", Config::PROPERTIES, [
 				"motd" => "Minecraft: PE Server",
@@ -1574,8 +1598,9 @@ class Server{
 			Attribute::init();
 			$this->craftingManager = new CraftingManager();
 
+			if($this->aiEnabled) $this->aiHolder = new AIHolder($this);
+			
 			$this->resourceManager = new ResourcePackManager($this, $this->getDataPath() . "resource_packs" . DIRECTORY_SEPARATOR);
-
 			$this->pluginManager = new PluginManager($this, $this->commandMap);
 			$this->pluginManager->subscribeToPermission(Server::BROADCAST_CHANNEL_ADMINISTRATIVE, $this->consoleSender);
 			$this->pluginManager->setUseTimings($this->getProperty("settings.enable-profiling", false));
@@ -1666,6 +1691,10 @@ class Server{
 		}catch(\Throwable $e){
 			$this->exceptionHandler($e);
 		}
+	}
+	
+	public function getAIHolder(){
+		return $this->aiHolder;
 	}
 
 	/**

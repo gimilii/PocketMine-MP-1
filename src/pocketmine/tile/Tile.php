@@ -74,6 +74,7 @@ abstract class Tile extends Position{
 		self::registerTile(ItemFrame::class);
 		self::registerTile(Sign::class);
 		self::registerTile(Skull::class);
+		self::registerTile(MobSpawner::class);
 	}
 
 	/**
@@ -101,6 +102,7 @@ abstract class Tile extends Position{
 	public static function registerTile($className){
 		$class = new \ReflectionClass($className);
 		if(is_a($className, Tile::class, true) and !$class->isAbstract()){
+			$shortName = $class->getShortName();
 			self::$knownTiles[$class->getShortName()] = $className;
 			self::$shortNames[$className] = $class->getShortName();
 			return true;
