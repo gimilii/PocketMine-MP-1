@@ -19,6 +19,8 @@
  *
 */
 
+declare(strict_types=1);
+
 namespace pocketmine\block;
 
 use pocketmine\entity\Entity;
@@ -50,6 +52,10 @@ class Ladder extends Transparent{
 
 	public function getHardness(){
 		return 0.4;
+	}
+
+	public function canClimb() : bool{
+		return true;
 	}
 
 	public function onEntityCollide(Entity $entity){

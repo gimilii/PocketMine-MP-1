@@ -19,14 +19,17 @@
  *
 */
 
+declare(strict_types=1);
+
 namespace pocketmine\entity;
 
 
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\item\Item as ItemItem;
+
 use pocketmine\item\enchantment\Enchantment;
 use pocketmine\network\Network;
-use pocketmine\network\protocol\AddEntityPacket;
+use pocketmine\network\mcpe\protocol\AddEntityPacket;
 use pocketmine\Player;
 use pocketmine\math\Vector3;
 use pocketmine\event\entity\EntityDamageEvent;
@@ -67,7 +70,7 @@ class Zombie extends Monster{
 
 	public function spawnTo(Player $player){
 		$pk = new AddEntityPacket();
-		$pk->eid = $this->getId();
+		$pk->entityRuntimeId = $this->getId();
 		$pk->type = Zombie::NETWORK_ID;
 		$pk->x = $this->x;
 		$pk->y = $this->y;

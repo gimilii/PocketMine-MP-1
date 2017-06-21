@@ -19,6 +19,8 @@
  *
 */
 
+declare(strict_types=1);
+
 namespace pocketmine\scheduler;
 
 use pocketmine\Collectable;
@@ -139,7 +141,7 @@ abstract class AsyncTask extends Collectable{
 	 */
 	public function getFromThreadStore($identifier){
 		global $store;
-		return $this->isGarbage() ? null : $store[$identifier];
+		return ($this->isGarbage() or !isset($store[$identifier])) ? null : $store[$identifier];
 	}
 
 	/**
@@ -161,7 +163,7 @@ abstract class AsyncTask extends Collectable{
 	 *
 	 * @return void
 	 */
-	public abstract function onRun();
+	abstract public function onRun();
 
 	/**
 	 * Actions to execute when completed (on main thread)
@@ -261,7 +263,8 @@ abstract class AsyncTask extends Collectable{
 				$this->{$p} = null;
 			}
 		}
-	}
 
+		$this->setGarbage();
+	}
 }
 

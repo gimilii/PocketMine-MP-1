@@ -19,6 +19,8 @@
  *
 */
 
+declare(strict_types=1);
+
 /**
  * All the Tile classes and related classes
  */
@@ -150,6 +152,17 @@ abstract class Tile extends Position{
 		$this->namedtag->z = new IntTag("z", $this->z);
 	}
 
+	public function getCleanedNBT(){
+		$this->saveNBT();
+		$tag = clone $this->namedtag;
+		unset($tag->x, $tag->y, $tag->z, $tag->id);
+		if($tag->getCount() > 0){
+			return $tag;
+		}else{
+			return null;
+		}
+	}
+
 	/**
 	 * @return \pocketmine\block\Block
 	 */
@@ -161,7 +174,7 @@ abstract class Tile extends Position{
 		return false;
 	}
 
-	public final function scheduleUpdate(){
+	final public function scheduleUpdate(){
 		$this->level->updateTiles[$this->id] = $this;
 	}
 

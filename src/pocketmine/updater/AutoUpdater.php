@@ -19,12 +19,14 @@
  *
 */
 
+declare(strict_types=1);
+
 namespace pocketmine\updater;
 
+use pocketmine\event\server\UpdateNotifyEvent;
 use pocketmine\Player;
 use pocketmine\Server;
 use pocketmine\utils\TextFormat;
-use pocketmine\utils\Utils;
 use pocketmine\utils\VersionString;
 
 class AutoUpdater{
@@ -60,6 +62,7 @@ class AutoUpdater{
 		$this->updateInfo = $updateInfo;
 		$this->checkUpdate();
 		if($this->hasUpdate()){
+			$this->server->getPluginManager()->callEvent(new UpdateNotifyEvent($this));
 			if($this->server->getProperty("auto-updater.on-update.warn-console", true)){
 				$this->showConsoleUpdate();
 			}
@@ -163,7 +166,7 @@ class AutoUpdater{
 	 */
 	public function getChannel(){
 		$channel = strtolower($this->server->getProperty("auto-updater.preferred-channel", "stable"));
-		if($channel !== "stable" and $channel !== "beta" and $channel !== "development"){
+		if($channel !== "stable" and $channel !== "beta" and $channel !== "alpha" and $channel !== "development"){
 			$channel = "stable";
 		}
 

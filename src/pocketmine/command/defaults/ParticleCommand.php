@@ -19,6 +19,8 @@
  *
 */
 
+declare(strict_types=1);
+
 namespace pocketmine\command\defaults;
 
 use pocketmine\block\Block;
@@ -126,10 +128,11 @@ class ParticleCommand extends VanillaCommand{
 	 * @param string   $name
 	 *
 	 * @param Vector3  $pos
-	 * @param int      $xd
+	 * @param float    $xd
 	 * @param float    $yd
 	 * @param float    $zd
 	 * @param int|null $data
+	 *
 	 * @return Particle
 	 */
 	private function getParticle($name, Vector3 $pos, $xd, $yd, $zd, $data){
@@ -176,12 +179,12 @@ class ParticleCommand extends VanillaCommand{
 				return new ItemBreakParticle($pos, Item::get(Item::SLIMEBALL));
 			case "itembreak":
 				if($data !== null and $data !== 0){
-					return new ItemBreakParticle($pos, $data);
+					return new ItemBreakParticle($pos, Item::get($data));
 				}
 				break;
 			case "terrain":
 				if($data !== null and $data !== 0){
-					return new TerrainParticle($pos, $data);
+					return new TerrainParticle($pos, Block::get($data));
 				}
 				break;
 			case "heart":

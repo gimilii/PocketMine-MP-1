@@ -19,21 +19,23 @@
  *
 */
 
+declare(strict_types=1);
+
 namespace pocketmine\level\format\io\leveldb;
 
 use pocketmine\level\format\Chunk;
-use pocketmine\level\format\SubChunk;
 use pocketmine\level\format\io\BaseLevelProvider;
 use pocketmine\level\format\io\ChunkUtils;
-use pocketmine\level\generator\Generator;
+use pocketmine\level\format\SubChunk;
 use pocketmine\level\generator\Flat;
+use pocketmine\level\generator\Generator;
 use pocketmine\level\Level;
 use pocketmine\level\LevelException;
 use pocketmine\nbt\NBT;
 use pocketmine\nbt\tag\{
 	ByteTag, CompoundTag, FloatTag, IntTag, LongTag, StringTag
 };
-use pocketmine\network\protocol\Info as ProtocolInfo;
+use pocketmine\network\mcpe\protocol\ProtocolInfo;
 use pocketmine\utils\Binary;
 use pocketmine\utils\MainLogger;
 
@@ -93,7 +95,7 @@ class LevelDB extends BaseLevelProvider{
 			if(isset($this->levelData->Generator)){
 				switch((int) $this->levelData->Generator->getValue()){ //Detect correct generator from MCPE data
 					case self::GENERATOR_FLAT:
-						$this->levelData->generatorName = new StringTag("generatorName", Generator::getGenerator("FLAT"));
+						$this->levelData->generatorName = new StringTag("generatorName", (string) Generator::getGenerator("FLAT"));
 						if(($layers = $this->db->get(self::ENTRY_FLAT_WORLD_LAYERS)) !== false){ //Detect existing custom flat layers
 							$layers = trim($layers, "[]");
 						}else{
@@ -103,7 +105,7 @@ class LevelDB extends BaseLevelProvider{
 						break;
 					case self::GENERATOR_INFINITE:
 						//TODO: add a null generator which does not generate missing chunks (to allow importing back to MCPE and generating more normal terrain without PocketMine messing things up)
-						$this->levelData->generatorName = new StringTag("generatorName", Generator::getGenerator("DEFAULT"));
+						$this->levelData->generatorName = new StringTag("generatorName", (string) Generator::getGenerator("DEFAULT"));
 						$this->levelData->generatorOptions = new StringTag("generatorOptions", "");
 						break;
 					case self::GENERATOR_LIMITED:
@@ -112,7 +114,7 @@ class LevelDB extends BaseLevelProvider{
 						throw new LevelException("Unknown LevelDB world format type, this level cannot be loaded");
 				}
 			}else{
-				$this->levelData->generatorName = new StringTag("generatorName", Generator::getGenerator("DEFAULT"));
+				$this->levelData->generatorName = new StringTag("generatorName", (string) Generator::getGenerator("DEFAULT"));
 			}
 		}
 
@@ -133,7 +135,7 @@ class LevelDB extends BaseLevelProvider{
 		return file_exists($path . "/level.dat") and is_dir($path . "/db/");
 	}
 
-	public static function generate(string $path, string $name, $seed, string $generator, array $options = []){
+	public static function generate(string $path, string $name, int $seed, string $generator, array $options = []){
 		if(!file_exists($path)){
 			mkdir($path, 0777, true);
 		}
@@ -153,39 +155,39 @@ class LevelDB extends BaseLevelProvider{
 
 		$levelData = new CompoundTag("", [
 			//Vanilla fields
-			"DayCycleStopTime" => new IntTag("DayCycleStopTime", -1),
-			"Difficulty" => new IntTag("Difficulty", 2),
-			"ForceGameType" => new ByteTag("ForceGameType", 0),
-			"GameType" => new IntTag("GameType", 0),
-			"Generator" => new IntTag("Generator", $generatorType),
-			"LastPlayed" => new LongTag("LastPlayed", time()),
-			"LevelName" => new StringTag("LevelName", $name),
-			"NetworkVersion" => new IntTag("NetworkVersion", ProtocolInfo::CURRENT_PROTOCOL),
-			//"Platform" => new IntTag("Platform", 2), //TODO: find out what the possible values are for
-			"RandomSeed" => new LongTag("RandomSeed", $seed),
-			"SpawnX" => new IntTag("SpawnX", 0),
-			"SpawnY" => new IntTag("SpawnY", 32767),
-			"SpawnZ" => new IntTag("SpawnZ", 0),
-			"StorageVersion" => new IntTag("StorageVersion", self::CURRENT_STORAGE_VERSION),
-			"Time" => new LongTag("Time", 0),
-			"eduLevel" => new ByteTag("eduLevel", 0),
-			"falldamage" => new ByteTag("falldamage", 1),
-			"firedamage" => new ByteTag("firedamage", 1),
-			"hasBeenLoadedInCreative" => new ByteTag("hasBeenLoadedInCreative", 1), //badly named, this actually determines whether achievements can be earned in this world...
-			"immutableWorld" => new ByteTag("immutableWorld", 0),
-			"lightningLevel" => new FloatTag("lightningLevel", 0.0),
-			"lightningTime" => new IntTag("lightningTime", 0),
-			"pvp" => new ByteTag("pvp", 1),
-			"rainLevel" => new FloatTag("rainLevel", 0.0),
-			"rainTime" => new IntTag("rainTime", 0),
-			"spawnMobs" => new ByteTag("spawnMobs", 1),
-			"texturePacksRequired" => new ByteTag("texturePacksRequired", 0), //TODO
+			new IntTag("DayCycleStopTime", -1),
+			new IntTag("Difficulty", 2),
+			new ByteTag("ForceGameType", 0),
+			new IntTag("GameType", 0),
+			new IntTag("Generator", $generatorType),
+			new LongTag("LastPlayed", time()),
+			new StringTag("LevelName", $name),
+			new IntTag("NetworkVersion", ProtocolInfo::CURRENT_PROTOCOL),
+			//new IntTag("Platform", 2), //TODO: find out what the possible values are for
+			new LongTag("RandomSeed", $seed),
+			new IntTag("SpawnX", 0),
+			new IntTag("SpawnY", 32767),
+			new IntTag("SpawnZ", 0),
+			new IntTag("StorageVersion", self::CURRENT_STORAGE_VERSION),
+			new LongTag("Time", 0),
+			new ByteTag("eduLevel", 0),
+			new ByteTag("falldamage", 1),
+			new ByteTag("firedamage", 1),
+			new ByteTag("hasBeenLoadedInCreative", 1), //badly named, this actually determines whether achievements can be earned in this world...
+			new ByteTag("immutableWorld", 0),
+			new FloatTag("lightningLevel", 0.0),
+			new IntTag("lightningTime", 0),
+			new ByteTag("pvp", 1),
+			new FloatTag("rainLevel", 0.0),
+			new IntTag("rainTime", 0),
+			new ByteTag("spawnMobs", 1),
+			new ByteTag("texturePacksRequired", 0), //TODO
 
 			//Additional PocketMine-MP fields
-			"GameRules" => new CompoundTag("GameRules", []),
-			"hardcore" => new ByteTag("hardcore", 0),
-			"generatorName" => new StringTag("generatorName", Generator::getGeneratorName($generator)),
-			"generatorOptions" => new StringTag("generatorOptions", $options["preset"] ?? "")
+			new CompoundTag("GameRules", []),
+			new ByteTag("hardcore", 0),
+			new StringTag("generatorName", Generator::getGeneratorName($generator)),
+			new StringTag("generatorOptions", $options["preset"] ?? "")
 		]);
 
 		$nbt = new NBT(NBT::LITTLE_ENDIAN);
@@ -229,7 +231,7 @@ class LevelDB extends BaseLevelProvider{
 	}
 
 	public function getGenerator() : string{
-		return $this->levelData["generatorName"];
+		return (string) $this->levelData["generatorName"];
 	}
 
 	public function getGeneratorOptions() : array{
@@ -435,7 +437,7 @@ class LevelDB extends BaseLevelProvider{
 						   "\x00" . //Subchunk version byte
 						   $subChunks[$y]->getBlockIdArray() .
 						   $subChunks[$y]->getBlockDataArray() .
-						   $subChunks[$y]->getSkyLightArray() .
+						   $subChunks[$y]->getBlockSkyLightArray() .
 						   $subChunks[$y]->getBlockLightArray()
 			);
 		}

@@ -19,11 +19,11 @@
  *
 */
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace pocketmine\level\format;
 
-class SubChunk{
+class SubChunk implements SubChunkInterface{
 
 	protected $ids;
 	protected $data;
@@ -159,9 +159,11 @@ class SubChunk{
 	}
 
 	public function getHighestBlockAt(int $x, int $z) : int{
-		for($y = 15; $y >= 0; --$y){
-			if($this->ids{($x << 8) | ($z << 4) | $y} !== "\x00"){
-				return $y;
+		$low = ($x << 8) | ($z << 4);
+		$i = $low | 0x0f;
+		for(; $i >= $low; --$i){
+			if($this->ids{$i} !== "\x00"){
+				return $i & 0x0f;
 			}
 		}
 
@@ -180,7 +182,7 @@ class SubChunk{
 		return substr($this->blockLight, (($x << 7) | ($z << 3)), 8);
 	}
 
-	public function getSkyLightColumn(int $x, int $z) : string{
+	public function getBlockSkyLightColumn(int $x, int $z) : string{
 		return substr($this->skyLight, (($x << 7) | ($z << 3)), 8);
 	}
 
@@ -194,7 +196,7 @@ class SubChunk{
 		return $this->data;
 	}
 
-	public function getSkyLightArray() : string{
+	public function getBlockSkyLightArray() : string{
 		assert(strlen($this->skyLight) === 2048, "Wrong length of skylight array, expecting 2048 bytes, got " . strlen($this->skyLight));
 		return $this->skyLight;
 	}

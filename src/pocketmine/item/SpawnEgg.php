@@ -2,8 +2,9 @@
 
 /*
  *
- *  ____            _        _   __  __ _                  __  __ ____  
- * |  _ \ ___   ___| | _____| |_|  \/  (_)_ __   ___      |  \/  |  _ \ 
+
+ *  ____            _        _   __  __ _                  __  __ ____
+ * |  _ \ ___   ___| | _____| |_|  \/  (_)_ __   ___      |  \/  |  _ \
  * | |_) / _ \ / __| |/ / _ \ __| |\/| | | '_ \ / _ \_____| |\/| | |_) |
  * |  __/ (_) | (__|   <  __/ |_| |  | | | | | |  __/_____| |  | |  __/ 
  * |_|   \___/ \___|_|\_\___|\__|_|  |_|_|_| |_|\___|     |_|  |_|_| 
@@ -18,6 +19,8 @@
  * 
  *
 */
+
+declare(strict_types=1);
 
 namespace pocketmine\item;
 
@@ -43,6 +46,7 @@ class SpawnEgg extends Item{
 	}
 
 	public function onActivate(Level $level, Player $player, Block $block, Block $target, $face, $fx, $fy, $fz){
+
 		if($target->getId() == Block::MONSTER_SPAWNER){
 			return true;
 		}else{
@@ -52,6 +56,22 @@ class SpawnEgg extends Item{
 // 			if(!($chunk instanceof FullChunk)){
 // 				return false;
 // 			}
+		$nbt = new CompoundTag("", [
+			new ListTag("Pos", [
+				new DoubleTag("", $block->getX() + 0.5),
+				new DoubleTag("", $block->getY()),
+				new DoubleTag("", $block->getZ() + 0.5)
+			]),
+			new ListTag("Motion", [
+				new DoubleTag("", 0),
+				new DoubleTag("", 0),
+				new DoubleTag("", 0)
+			]),
+			new ListTag("Rotation", [
+				new FloatTag("", lcg_value() * 360),
+				new FloatTag("", 0)
+			]),
+		]);
 
 			$nbt = new CompoundTag("", [
 				"Pos" => new ListTag("Pos", [
