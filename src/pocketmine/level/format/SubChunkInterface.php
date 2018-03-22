@@ -26,9 +26,10 @@ namespace pocketmine\level\format;
 interface SubChunkInterface{
 
 	/**
+	 * @param bool $checkLight
 	 * @return bool
 	 */
-	public function isEmpty() : bool;
+	public function isEmpty(bool $checkLight = true) : bool;
 
 	/**
 	 * @param int $x
@@ -182,9 +183,19 @@ interface SubChunkInterface{
 	public function getBlockSkyLightArray() : string;
 
 	/**
+	 * @param string $data
+	 */
+	public function setBlockSkyLightArray(string $data);
+
+	/**
 	 * @return string
 	 */
 	public function getBlockLightArray() : string;
+
+	/**
+	 * @param string $data
+	 */
+	public function setBlockLightArray(string $data);
 
 	/**
 	 * @return string

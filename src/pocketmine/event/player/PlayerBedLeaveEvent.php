@@ -27,8 +27,7 @@ use pocketmine\block\Block;
 use pocketmine\Player;
 
 class PlayerBedLeaveEvent extends PlayerEvent{
-	public static $handlerList = null;
-
+	/** @var Block */
 	private $bed;
 
 	public function __construct(Player $player, Block $bed){
@@ -36,7 +35,10 @@ class PlayerBedLeaveEvent extends PlayerEvent{
 		$this->bed = $bed;
 	}
 
-	public function getBed(){
+	/**
+	 * @return Block
+	 */
+	public function getBed() : Block{
 		return $this->bed;
 	}
 

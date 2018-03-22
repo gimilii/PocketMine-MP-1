@@ -26,12 +26,16 @@ declare(strict_types=1);
  */
 namespace pocketmine\event\entity;
 
+use pocketmine\entity\Entity;
 use pocketmine\event\Event;
 
 abstract class EntityEvent extends Event{
-	/** @var \pocketmine\entity\Entity */
+	/** @var Entity */
 	protected $entity;
 
+	/**
+	 * @return Entity
+	 */
 	public function getEntity(){
 		return $this->entity;
 	}

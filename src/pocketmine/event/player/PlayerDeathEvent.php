@@ -24,12 +24,13 @@ declare(strict_types=1);
 namespace pocketmine\event\player;
 
 use pocketmine\event\entity\EntityDeathEvent;
-use pocketmine\event\TextContainer;
 use pocketmine\item\Item;
+use pocketmine\lang\TextContainer;
 use pocketmine\Player;
 
 class PlayerDeathEvent extends EntityDeathEvent{
-	public static $handlerList = null;
+	/** @var Player */
+	protected $entity;
 
 	/** @var TextContainer|string */
 	private $deathMessage;
@@ -55,7 +56,7 @@ class PlayerDeathEvent extends EntityDeathEvent{
 	/**
 	 * @return Player
 	 */
-	public function getPlayer(){
+	public function getPlayer() : Player{
 		return $this->entity;
 	}
 
@@ -73,12 +74,12 @@ class PlayerDeathEvent extends EntityDeathEvent{
 		$this->deathMessage = $deathMessage;
 	}
 
-	public function getKeepInventory(){
+	public function getKeepInventory() : bool{
 		return $this->keepInventory;
 	}
 
-	public function setKeepInventory($keepInventory){
-		$this->keepInventory = (bool) $keepInventory;
+	public function setKeepInventory(bool $keepInventory){
+		$this->keepInventory = $keepInventory;
 	}
 
 }

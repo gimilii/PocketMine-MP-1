@@ -25,14 +25,15 @@ namespace pocketmine\command\defaults;
 
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
-use pocketmine\event\TranslationContainer;
+use pocketmine\command\utils\InvalidCommandSyntaxException;
+use pocketmine\lang\TranslationContainer;
 use pocketmine\math\Vector3;
 use pocketmine\Player;
 use pocketmine\utils\TextFormat;
 
 class SetWorldSpawnCommand extends VanillaCommand{
 
-	public function __construct($name){
+	public function __construct(string $name){
 		parent::__construct(
 			$name,
 			"%pocketmine.command.setworldspawn.description",
@@ -41,7 +42,7 @@ class SetWorldSpawnCommand extends VanillaCommand{
 		$this->setPermission("pocketmine.command.setworldspawn");
 	}
 
-	public function execute(CommandSender $sender, $currentAlias, array $args){
+	public function execute(CommandSender $sender, string $commandLabel, array $args){
 		if(!$this->testPermission($sender)){
 			return true;
 		}
@@ -59,9 +60,7 @@ class SetWorldSpawnCommand extends VanillaCommand{
 			$level = $sender->getServer()->getDefaultLevel();
 			$pos = new Vector3($this->getInteger($sender, $args[0]), $this->getInteger($sender, $args[1]), $this->getInteger($sender, $args[2]));
 		}else{
-			$sender->sendMessage(new TranslationContainer("commands.generic.usage", [$this->usageMessage]));
-
-			return true;
+			throw new InvalidCommandSyntaxException();
 		}
 
 		$level->setSpawnLocation($pos);

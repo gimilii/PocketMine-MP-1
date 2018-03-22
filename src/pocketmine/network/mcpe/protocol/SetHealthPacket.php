@@ -29,16 +29,16 @@ namespace pocketmine\network\mcpe\protocol;
 use pocketmine\network\mcpe\NetworkSession;
 
 class SetHealthPacket extends DataPacket{
-	const NETWORK_ID = ProtocolInfo::SET_HEALTH_PACKET;
+	public const NETWORK_ID = ProtocolInfo::SET_HEALTH_PACKET;
 
+	/** @var int */
 	public $health;
 
-	public function decode(){
+	protected function decodePayload(){
 		$this->health = $this->getVarInt();
 	}
 
-	public function encode(){
-		$this->reset();
+	protected function encodePayload(){
 		$this->putVarInt($this->health);
 	}
 

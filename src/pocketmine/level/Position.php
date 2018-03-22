@@ -38,9 +38,7 @@ class Position extends Vector3{
 	 * @param Level $level
 	 */
 	public function __construct($x = 0, $y = 0, $z = 0, Level $level = null){
-		$this->x = $x;
-		$this->y = $y;
-		$this->z = $z;
+		parent::__construct($x, $y, $z);
 		$this->level = $level;
 	}
 
@@ -50,13 +48,13 @@ class Position extends Vector3{
 
 	/**
 	 * Return a Position instance
-	 * 
+	 *
 	 * @return Position
 	 */
 	public function asPosition() : Position{
 		return new Position($this->x, $this->y, $this->z, $this->level);
 	}
-	
+
 	/**
 	 * Returns the target Level, or null if the target is not valid.
 	 * If a reference exists to a Level which is closed, the reference will be destroyed and null will be returned.
@@ -95,7 +93,7 @@ class Position extends Vector3{
 	 *
 	 * @return bool
 	 */
-	public function isValid(){
+	public function isValid() : bool{
 		return $this->getLevel() instanceof Level;
 	}
 
@@ -106,10 +104,8 @@ class Position extends Vector3{
 	 * @param int $step
 	 *
 	 * @return Position
-	 *
-	 * @throws LevelException
 	 */
-	public function getSide($side, $step = 1){
+	public function getSide(int $side, int $step = 1){
 		assert($this->isValid());
 
 		return Position::fromObject(parent::getSide($side, $step), $this->level);
@@ -119,18 +115,10 @@ class Position extends Vector3{
 		return "Position(level=" . ($this->isValid() ? $this->getLevel()->getName() : "null") . ",x=" . $this->x . ",y=" . $this->y . ",z=" . $this->z . ")";
 	}
 
-	/**
-	 * @param $x
-	 * @param $y
-	 * @param $z
-	 *
-	 * @return Position
-	 */
-	public function setComponents($x, $y, $z){
-		$this->x = $x;
-		$this->y = $y;
-		$this->z = $z;
-		return $this;
+	public function equals(Vector3 $v) : bool{
+		if($v instanceof Position){
+			return parent::equals($v) and $v->getLevel() === $this->getLevel();
+		}
+		return parent::equals($v);
 	}
-
 }

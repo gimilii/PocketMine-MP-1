@@ -31,14 +31,19 @@ use pocketmine\utils\VersionString;
 
 class SendUsageTask extends AsyncTask{
 
-	const TYPE_OPEN = 1;
-	const TYPE_STATUS = 2;
-	const TYPE_CLOSE = 3;
+	public const TYPE_OPEN = 1;
+	public const TYPE_STATUS = 2;
+	public const TYPE_CLOSE = 3;
 
 	public $endpoint;
 	public $data;
 
-	public function __construct(Server $server, $type, $playerList = []){
+	/**
+	 * @param Server $server
+	 * @param int    $type
+	 * @param array  $playerList
+	 */
+	public function __construct(Server $server, int $type, array $playerList = []){
 		$endpoint = "http://" . $server->getProperty("anonymous-statistics.host", "stats.pocketmine.net") . "/";
 
 		$data = [];

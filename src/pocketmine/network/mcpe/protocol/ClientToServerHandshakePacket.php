@@ -29,18 +29,17 @@ namespace pocketmine\network\mcpe\protocol;
 use pocketmine\network\mcpe\NetworkSession;
 
 class ClientToServerHandshakePacket extends DataPacket{
-	const NETWORK_ID = ProtocolInfo::CLIENT_TO_SERVER_HANDSHAKE_PACKET;
+	public const NETWORK_ID = ProtocolInfo::CLIENT_TO_SERVER_HANDSHAKE_PACKET;
 
 	public function canBeSentBeforeLogin() : bool{
 		return true;
 	}
 
-	public function decode(){
+	protected function decodePayload(){
 		//No payload
 	}
 
-	public function encode(){
-		$this->reset();
+	protected function encodePayload(){
 		//No payload
 	}
 

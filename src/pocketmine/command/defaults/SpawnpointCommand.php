@@ -25,7 +25,8 @@ namespace pocketmine\command\defaults;
 
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
-use pocketmine\event\TranslationContainer;
+use pocketmine\command\utils\InvalidCommandSyntaxException;
+use pocketmine\lang\TranslationContainer;
 use pocketmine\level\Level;
 use pocketmine\level\Position;
 use pocketmine\Player;
@@ -33,7 +34,7 @@ use pocketmine\utils\TextFormat;
 
 class SpawnpointCommand extends VanillaCommand{
 
-	public function __construct($name){
+	public function __construct(string $name){
 		parent::__construct(
 			$name,
 			"%pocketmine.command.spawnpoint.description",
@@ -42,7 +43,7 @@ class SpawnpointCommand extends VanillaCommand{
 		$this->setPermission("pocketmine.command.spawnpoint");
 	}
 
-	public function execute(CommandSender $sender, $currentAlias, array $args){
+	public function execute(CommandSender $sender, string $commandLabel, array $args){
 		if(!$this->testPermission($sender)){
 			return true;
 		}
@@ -66,10 +67,9 @@ class SpawnpointCommand extends VanillaCommand{
 			}
 		}
 
-		$level = $target->getLevel();
-
 		if(count($args) === 4){
-			if($level !== null){
+			if($target->isValid()){
+				$level = $target->getLevel();
 				$pos = $sender instanceof Player ? $sender->getPosition() : $level->getSpawnLocation();
 				$x = $this->getRelativeDouble($pos->x, $sender, $args[1]);
 				$y = $this->getRelativeDouble($pos->y, $sender, $args[2], 0, Level::Y_MAX);
@@ -82,7 +82,7 @@ class SpawnpointCommand extends VanillaCommand{
 			}
 		}elseif(count($args) <= 1){
 			if($sender instanceof Player){
-				$pos = new Position((int) $sender->x, (int) $sender->y, (int) $sender->z, $sender->getLevel());
+				$pos = new Position($sender->getFloorX(), $sender->getFloorY(), $sender->getFloorZ(), $sender->getLevel());
 				$target->setSpawn($pos);
 
 				Command::broadcastCommandMessage($sender, new TranslationContainer("commands.spawnpoint.success", [$target->getName(), round($pos->x, 2), round($pos->y, 2), round($pos->z, 2)]));
@@ -94,8 +94,6 @@ class SpawnpointCommand extends VanillaCommand{
 			}
 		}
 
-		$sender->sendMessage(new TranslationContainer("commands.generic.usage", [$this->usageMessage]));
-
-		return true;
+		throw new InvalidCommandSyntaxException();
 	}
 }

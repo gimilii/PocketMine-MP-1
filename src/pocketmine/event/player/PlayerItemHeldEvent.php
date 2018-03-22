@@ -28,29 +28,37 @@ use pocketmine\item\Item;
 use pocketmine\Player;
 
 class PlayerItemHeldEvent extends PlayerEvent implements Cancellable{
-	public static $handlerList = null;
-
+	/** @var Item */
 	private $item;
-	private $slot;
-	private $inventorySlot;
+	/** @var int */
+	private $hotbarSlot;
 
-	public function __construct(Player $player, Item $item, $inventorySlot, $slot){
+	public function __construct(Player $player, Item $item, int $hotbarSlot){
 		$this->player = $player;
 		$this->item = $item;
-		$this->inventorySlot = (int) $inventorySlot;
-		$this->slot = (int) $slot;
+		$this->hotbarSlot = $hotbarSlot;
 	}
 
-	public function getSlot(){
-		return $this->slot;
+	/**
+	 * Returns the hotbar slot the player is attempting to hold.
+	 *
+	 * NOTE: This event is called BEFORE the slot is equipped server-side. Setting the player's held item during this
+	 * event will result in the **old** slot being changed, not this one.
+	 *
+	 * To change the item in the slot that the player is attempting to hold, set the slot that this function reports.
+	 *
+	 * @return int
+	 */
+	public function getSlot() : int{
+		return $this->hotbarSlot;
 	}
 
-	public function getInventorySlot(){
-		return $this->inventorySlot;
-	}
-
-	public function getItem(){
+	/**
+	 * Returns the item in the slot that the player is trying to equip.
+	 *
+	 * @return Item
+	 */
+	public function getItem() : Item{
 		return $this->item;
 	}
-
 }

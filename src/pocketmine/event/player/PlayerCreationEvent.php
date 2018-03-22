@@ -31,12 +31,8 @@ use pocketmine\Player;
  * Allows the creation of players overriding the base Player class
  */
 class PlayerCreationEvent extends Event{
-	public static $handlerList = null;
-
 	/** @var SourceInterface */
 	private $interface;
-	/** @var mixed */
-	private $clientId;
 	/** @var string */
 	private $address;
 	/** @var int */
@@ -49,15 +45,13 @@ class PlayerCreationEvent extends Event{
 
 	/**
 	 * @param SourceInterface $interface
-	 * @param                 Player::class   $baseClass
-	 * @param                 Player::class   $playerClass
-	 * @param mixed           $clientId
+	 * @param Player::class   $baseClass
+	 * @param Player::class   $playerClass
 	 * @param string          $address
 	 * @param int             $port
 	 */
-	public function __construct(SourceInterface $interface, $baseClass, $playerClass, $clientId, $address, $port){
+	public function __construct(SourceInterface $interface, $baseClass, $playerClass, string $address, int $port){
 		$this->interface = $interface;
-		$this->clientId = $clientId;
 		$this->address = $address;
 		$this->port = $port;
 
@@ -77,29 +71,22 @@ class PlayerCreationEvent extends Event{
 	/**
 	 * @return SourceInterface
 	 */
-	public function getInterface(){
+	public function getInterface() : SourceInterface{
 		return $this->interface;
 	}
 
 	/**
 	 * @return string
 	 */
-	public function getAddress(){
+	public function getAddress() : string{
 		return $this->address;
 	}
 
 	/**
 	 * @return int
 	 */
-	public function getPort(){
+	public function getPort() : int{
 		return $this->port;
-	}
-
-	/**
-	 * @return mixed
-	 */
-	public function getClientId(){
-		return $this->clientId;
 	}
 
 	/**

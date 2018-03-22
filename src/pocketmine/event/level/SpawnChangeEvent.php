@@ -31,8 +31,6 @@ use pocketmine\level\Position;
  * The previous spawn is included
  */
 class SpawnChangeEvent extends LevelEvent{
-	public static $handlerList = null;
-
 	/** @var Position */
 	private $previousSpawn;
 
@@ -48,7 +46,7 @@ class SpawnChangeEvent extends LevelEvent{
 	/**
 	 * @return Position
 	 */
-	public function getPreviousSpawn(){
+	public function getPreviousSpawn() : Position{
 		return $this->previousSpawn;
 	}
 }

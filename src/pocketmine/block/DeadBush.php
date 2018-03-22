@@ -23,31 +23,43 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
-use pocketmine\level\Level;
+use pocketmine\item\Item;
+use pocketmine\item\ItemFactory;
+use pocketmine\math\Vector3;
 
 class DeadBush extends Flowable{
 
 	protected $id = self::DEAD_BUSH;
 
-	public function __construct($meta = 0){
+	public function __construct(int $meta = 0){
 		$this->meta = $meta;
 	}
 
-	public function getName(){
+	public function getName() : string{
 		return "Dead Bush";
 	}
 
-
-	public function onUpdate($type){
-		if($type === Level::BLOCK_UPDATE_NORMAL){
-			if($this->getSide(0)->isTransparent() === true){
-				$this->getLevel()->useBreakOn($this);
-
-				return Level::BLOCK_UPDATE_NORMAL;
-			}
+	public function onNearbyBlockChange() : void{
+		if($this->getSide(Vector3::SIDE_DOWN)->isTransparent()){
+			$this->getLevel()->useBreakOn($this);
 		}
-
-		return false;
 	}
 
+	public function getToolType() : int{
+		return BlockToolType::TYPE_SHEARS;
+	}
+
+	public function getToolHarvestLevel() : int{
+		return 1;
+	}
+
+	public function getDrops(Item $item) : array{
+		if(!$this->isCompatibleWithTool($item)){
+			return [
+				ItemFactory::get(Item::STICK, 0, mt_rand(0, 2))
+			];
+		}
+
+		return parent::getDrops($item);
+	}
 }

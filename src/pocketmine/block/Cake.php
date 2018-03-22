@@ -23,40 +23,36 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
-use pocketmine\entity\Effect;
-use pocketmine\event\entity\EntityEatBlockEvent;
+use pocketmine\entity\EffectInstance;
+use pocketmine\entity\Living;
 use pocketmine\item\FoodSource;
 use pocketmine\item\Item;
-use pocketmine\level\Level;
 use pocketmine\math\AxisAlignedBB;
+use pocketmine\math\Vector3;
 use pocketmine\Player;
 
 class Cake extends Transparent implements FoodSource{
 
 	protected $id = self::CAKE_BLOCK;
 
-	public function __construct($meta = 0){
+	public function __construct(int $meta = 0){
 		$this->meta = $meta;
 	}
 
-	public function canBeActivated(){
-		return true;
-	}
-
-	public function getHardness(){
+	public function getHardness() : float{
 		return 0.5;
 	}
 
-	public function getName(){
-		return "Cake Block";
+	public function getName() : string{
+		return "Cake";
 	}
 
-	protected function recalculateBoundingBox(){
+	protected function recalculateBoundingBox() : ?AxisAlignedBB{
 
-		$f = (1 + $this->getDamage() * 2) / 16;
+		$f = $this->getDamage() * 0.125; //1 slice width
 
 		return new AxisAlignedBB(
-			$this->x + $f,
+			$this->x + 0.0625 + $f,
 			$this->y,
 			$this->z + 0.0625,
 			$this->x + 1 - 0.0625,
@@ -65,10 +61,10 @@ class Cake extends Transparent implements FoodSource{
 		);
 	}
 
-	public function place(Item $item, Block $block, Block $target, $face, $fx, $fy, $fz, Player $player = null){
-		$down = $this->getSide(0);
+	public function place(Item $item, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector, Player $player = null) : bool{
+		$down = $this->getSide(Vector3::SIDE_DOWN);
 		if($down->getId() !== self::AIR){
-			$this->getLevel()->setBlock($block, $this, true, true);
+			$this->getLevel()->setBlock($blockReplace, $this, true, true);
 
 			return true;
 		}
@@ -76,30 +72,24 @@ class Cake extends Transparent implements FoodSource{
 		return false;
 	}
 
-	public function onUpdate($type){
-		if($type === Level::BLOCK_UPDATE_NORMAL){
-			if($this->getSide(0)->getId() === self::AIR){ //Replace with common break method
-				$this->getLevel()->setBlock($this, new Air(), true);
-
-				return Level::BLOCK_UPDATE_NORMAL;
-			}
+	public function onNearbyBlockChange() : void{
+		if($this->getSide(Vector3::SIDE_DOWN)->getId() === self::AIR){ //Replace with common break method
+			$this->getLevel()->setBlock($this, BlockFactory::get(Block::AIR), true);
 		}
-
-		return false;
 	}
 
-	public function getDrops(Item $item){
+	public function getDropsForCompatibleTool(Item $item) : array{
 		return [];
 	}
 
-	public function onActivate(Item $item, Player $player = null){
-		if($player instanceof Player and $player->getHealth() < $player->getMaxHealth()){
-			$ev = new EntityEatBlockEvent($player, $this);
+	public function isAffectedBySilkTouch() : bool{
+		return false;
+	}
 
-			if(!$ev->isCancelled()){
-				$this->getLevel()->setBlock($this, $ev->getResidue());
-				return true;
-			}
+	public function onActivate(Item $item, Player $player = null) : bool{
+		if($player !== null){
+			$player->consumeObject($this);
+			return true;
 		}
 
 		return false;
@@ -113,19 +103,30 @@ class Cake extends Transparent implements FoodSource{
 		return 0.4;
 	}
 
+	public function requiresHunger() : bool{
+		return true;
+	}
+
+	/**
+	 * @return Block
+	 */
 	public function getResidue(){
 		$clone = clone $this;
 		$clone->meta++;
-		if($clone->meta >= 0x06){
-			$clone = new Air();
+		if($clone->meta > 0x06){
+			$clone = BlockFactory::get(Block::AIR);
 		}
 		return $clone;
 	}
 
 	/**
-	 * @return Effect[]
+	 * @return EffectInstance[]
 	 */
 	public function getAdditionalEffects() : array{
 		return [];
+	}
+
+	public function onConsume(Living $consumer) : void{
+		$this->level->setBlock($this, $this->getResidue());
 	}
 }

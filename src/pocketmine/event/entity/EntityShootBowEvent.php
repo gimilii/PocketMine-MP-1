@@ -25,13 +25,11 @@ namespace pocketmine\event\entity;
 
 use pocketmine\entity\Entity;
 use pocketmine\entity\Living;
-use pocketmine\entity\Projectile;
+use pocketmine\entity\projectile\Projectile;
 use pocketmine\event\Cancellable;
 use pocketmine\item\Item;
 
 class EntityShootBowEvent extends EntityEvent implements Cancellable{
-	public static $handlerList = null;
-
 	/** @var Item */
 	private $bow;
 	/** @var Projectile */
@@ -45,7 +43,7 @@ class EntityShootBowEvent extends EntityEvent implements Cancellable{
 	 * @param Projectile $projectile
 	 * @param float      $force
 	 */
-	public function __construct(Living $shooter, Item $bow, Projectile $projectile, $force){
+	public function __construct(Living $shooter, Item $bow, Projectile $projectile, float $force){
 		$this->entity = $shooter;
 		$this->bow = $bow;
 		$this->projectile = $projectile;
@@ -62,14 +60,18 @@ class EntityShootBowEvent extends EntityEvent implements Cancellable{
 	/**
 	 * @return Item
 	 */
-	public function getBow(){
+	public function getBow() : Item{
 		return $this->bow;
 	}
 
 	/**
+	 * Returns the entity considered as the projectile in this event.
+	 *
+	 * NOTE: This might not return a Projectile if a plugin modified the target entity.
+	 *
 	 * @return Entity
 	 */
-	public function getProjectile(){
+	public function getProjectile() : Entity{
 		return $this->projectile;
 	}
 
@@ -79,7 +81,6 @@ class EntityShootBowEvent extends EntityEvent implements Cancellable{
 	public function setProjectile(Entity $projectile){
 		if($projectile !== $this->projectile){
 			if(count($this->projectile->getViewers()) === 0){
-				$this->projectile->kill();
 				$this->projectile->close();
 			}
 			$this->projectile = $projectile;
@@ -89,14 +90,14 @@ class EntityShootBowEvent extends EntityEvent implements Cancellable{
 	/**
 	 * @return float
 	 */
-	public function getForce(){
+	public function getForce() : float{
 		return $this->force;
 	}
 
 	/**
 	 * @param float $force
 	 */
-	public function setForce($force){
+	public function setForce(float $force){
 		$this->force = $force;
 	}
 

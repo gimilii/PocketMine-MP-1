@@ -24,11 +24,11 @@ declare(strict_types=1);
 namespace pocketmine\event\block;
 
 use pocketmine\block\Block;
-use pocketmine\event\Cancellable;
 
-class BlockSpreadEvent extends BlockFormEvent implements Cancellable{
-	public static $handlerList = null;
-
+/**
+ * Called when a block spreads to another block, such as grass spreading to nearby dirt blocks.
+ */
+class BlockSpreadEvent extends BlockFormEvent{
 	/** @var Block */
 	private $source;
 
@@ -40,7 +40,7 @@ class BlockSpreadEvent extends BlockFormEvent implements Cancellable{
 	/**
 	 * @return Block
 	 */
-	public function getSource(){
+	public function getSource() : Block{
 		return $this->source;
 	}
 

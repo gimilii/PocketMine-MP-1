@@ -24,26 +24,34 @@ declare(strict_types=1);
 namespace pocketmine\tile;
 
 use pocketmine\level\Level;
-use pocketmine\nbt\NBT;
+use pocketmine\nbt\NetworkLittleEndianNBTStream;
 use pocketmine\nbt\tag\CompoundTag;
+use pocketmine\nbt\tag\StringTag;
 use pocketmine\network\mcpe\protocol\BlockEntityDataPacket;
 use pocketmine\Player;
 
 abstract class Spawnable extends Tile{
+	/** @var string|null */
+	private $spawnCompoundCache = null;
+	/** @var NetworkLittleEndianNBTStream|null */
+	private static $nbtWriter = null;
 
-	public function spawnTo(Player $player){
-		if($this->closed){
-			return false;
-		}
-
-		$nbt = new NBT(NBT::LITTLE_ENDIAN);
-		$nbt->setData($this->getSpawnCompound());
+	public function createSpawnPacket() : BlockEntityDataPacket{
 		$pk = new BlockEntityDataPacket();
 		$pk->x = $this->x;
 		$pk->y = $this->y;
 		$pk->z = $this->z;
-		$pk->namedtag = $nbt->write(true);
-		$player->dataPacket($pk);
+		$pk->namedtag = $this->getSerializedSpawnCompound();
+
+		return $pk;
+	}
+
+	public function spawnTo(Player $player) : bool{
+		if($this->closed){
+			return false;
+		}
+
+		$player->dataPacket($this->createSpawnPacket());
 
 		return true;
 	}
@@ -58,26 +66,60 @@ abstract class Spawnable extends Tile{
 			return;
 		}
 
-		foreach($this->getLevel()->getChunkPlayers($this->chunk->getX(), $this->chunk->getZ()) as $player){
-			if($player->spawned === true){
-				$this->spawnTo($player);
-			}
-		}
+		$pk = $this->createSpawnPacket();
+		$this->level->addChunkPacket($this->getFloorX() >> 4, $this->getFloorZ() >> 4, $pk);
 	}
 
-	protected function onChanged(){
+	/**
+	 * Performs actions needed when the tile is modified, such as clearing caches and respawning the tile to players.
+	 * WARNING: This MUST be called to clear spawn-compound and chunk caches when the tile's spawn compound has changed!
+	 */
+	protected function onChanged() : void{
+		$this->spawnCompoundCache = null;
 		$this->spawnToAll();
 
-		if($this->chunk !== null){
-			$this->chunk->setChanged();
-			$this->level->clearChunkCache($this->chunk->getX(), $this->chunk->getZ());
+		$this->level->clearChunkCache($this->getFloorX() >> 4, $this->getFloorZ() >> 4);
+	}
+
+	/**
+	 * Returns encoded NBT (varint, little-endian) used to spawn this tile to clients. Uses cache where possible,
+	 * populates cache if it is null.
+	 *
+	 * @return string encoded NBT
+	 */
+	final public function getSerializedSpawnCompound() : string{
+		if($this->spawnCompoundCache === null){
+			if(self::$nbtWriter === null){
+				self::$nbtWriter = new NetworkLittleEndianNBTStream();
+			}
+
+			$this->spawnCompoundCache = self::$nbtWriter->write($this->getSpawnCompound());
 		}
+
+		return $this->spawnCompoundCache;
 	}
 
 	/**
 	 * @return CompoundTag
 	 */
-	abstract public function getSpawnCompound();
+	final public function getSpawnCompound() : CompoundTag{
+		$nbt = new CompoundTag("", [
+			new StringTag(self::TAG_ID, static::getSaveId()),
+			$this->namedtag->getTag(self::TAG_X),
+			$this->namedtag->getTag(self::TAG_Y),
+			$this->namedtag->getTag(self::TAG_Z)
+		]);
+		$this->addAdditionalSpawnData($nbt);
+		return $nbt;
+	}
+
+	/**
+	 * An extension to getSpawnCompound() for
+	 * further modifying the generic tile NBT.
+	 *
+	 * @param CompoundTag $nbt
+	 */
+	abstract public function addAdditionalSpawnData(CompoundTag $nbt) : void;
 
 	/**
 	 * Called when a player updates a block entity's NBT data

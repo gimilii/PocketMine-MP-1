@@ -30,17 +30,15 @@ use pocketmine\Player;
  * Called when a player has its gamemode changed
  */
 class PlayerGameModeChangeEvent extends PlayerEvent implements Cancellable{
-	public static $handlerList = null;
-
 	/** @var int */
 	protected $gamemode;
 
-	public function __construct(Player $player, $newGamemode){
+	public function __construct(Player $player, int $newGamemode){
 		$this->player = $player;
-		$this->gamemode = (int) $newGamemode;
+		$this->gamemode = $newGamemode;
 	}
 
-	public function getNewGamemode(){
+	public function getNewGamemode() : int{
 		return $this->gamemode;
 	}
 

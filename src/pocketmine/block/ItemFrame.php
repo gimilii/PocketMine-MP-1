@@ -24,10 +24,7 @@ declare(strict_types=1);
 namespace pocketmine\block;
 
 use pocketmine\item\Item;
-use pocketmine\level\Level;
-use pocketmine\nbt\tag\{
-	ByteTag, CompoundTag, FloatTag, IntTag, StringTag
-};
+use pocketmine\math\Vector3;
 use pocketmine\Player;
 use pocketmine\tile\ItemFrame as TileItemFrame;
 use pocketmine\tile\Tile;
@@ -35,116 +32,83 @@ use pocketmine\tile\Tile;
 class ItemFrame extends Flowable{
 	protected $id = Block::ITEM_FRAME_BLOCK;
 
-	public function __construct($meta = 0){
+	protected $itemId = Item::ITEM_FRAME;
+
+	public function __construct(int $meta = 0){
 		$this->meta = $meta;
 	}
 
-	public function getName(){
+	public function getName() : string{
 		return "Item Frame";
 	}
 
-	public function canBeActivated(){
-		return true;
-	}
-
-	public function onActivate(Item $item, Player $player = null){
+	public function onActivate(Item $item, Player $player = null) : bool{
 		$tile = $this->level->getTile($this);
 		if(!($tile instanceof TileItemFrame)){
-			$nbt = new CompoundTag("", [
-				new StringTag("id", Tile::ITEM_FRAME),
-				new IntTag("x", $this->x),
-				new IntTag("y", $this->y),
-				new IntTag("z", $this->z),
-				new FloatTag("ItemDropChance", 1.0),
-				new ByteTag("ItemRotation", 0)
-			]);
-			$tile = Tile::createTile(Tile::ITEM_FRAME, $this->getLevel(), $nbt);
+			$tile = Tile::createTile(Tile::ITEM_FRAME, $this->getLevel(), TileItemFrame::createNBT($this));
 		}
 
 		if($tile->hasItem()){
 			$tile->setItemRotation(($tile->getItemRotation() + 1) % 8);
-		}else{
-			if($item->getCount() > 0){
-				$frameItem = clone $item;
-				$frameItem->setCount(1);
-				$item->setCount($item->getCount() - 1);
-				$tile->setItem($frameItem);
-				if($player instanceof Player and $player->isSurvival()){
-					$player->getInventory()->setItemInHand($item->getCount() <= 0 ? Item::get(Item::AIR) : $item);
-				}
-			}
+		}elseif(!$item->isNull()){
+			$tile->setItem($item->pop());
 		}
 
 		return true;
 	}
 
-	public function onBreak(Item $item){
-		$tile = $this->level->getTile($this);
-		if($tile instanceof TileItemFrame){
-			//TODO: add events
-			if(lcg_value() <= $tile->getItemDropChance() and $tile->getItem()->getId() !== Item::AIR){
-				$this->level->dropItem($tile->getBlock(), $tile->getItem());
-			}
+	public function onNearbyBlockChange() : void{
+		$sides = [
+			0 => Vector3::SIDE_WEST,
+			1 => Vector3::SIDE_EAST,
+			2 => Vector3::SIDE_NORTH,
+			3 => Vector3::SIDE_SOUTH
+		];
+		if(!$this->getSide($sides[$this->meta])->isSolid()){
+			$this->level->useBreakOn($this);
 		}
-		return parent::onBreak($item);
 	}
 
-	public function onUpdate($type){
-		if($type === Level::BLOCK_UPDATE_NORMAL){
-			$sides = [
-				0 => 4,
-				1 => 5,
-				2 => 2,
-				3 => 3
-			];
-			if(!$this->getSide($sides[$this->meta])->isSolid()){
-				$this->level->useBreakOn($this);
-				return Level::BLOCK_UPDATE_NORMAL;
-			}
-		}
-		return false;
-	}
-
-	public function place(Item $item, Block $block, Block $target, $face, $fx, $fy, $fz, Player $player = null){
-		if($face === 0 or $face === 1){
+	public function place(Item $item, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector, Player $player = null) : bool{
+		if($face === Vector3::SIDE_DOWN or $face === Vector3::SIDE_UP or !$blockClicked->isSolid()){
 			return false;
 		}
 
 		$faces = [
-			2 => 3,
-			3 => 2,
-			4 => 1,
-			5 => 0
+			Vector3::SIDE_NORTH => 3,
+			Vector3::SIDE_SOUTH => 2,
+			Vector3::SIDE_WEST => 1,
+			Vector3::SIDE_EAST => 0
 		];
 
 		$this->meta = $faces[$face];
-		$this->level->setBlock($block, $this, true, true);
+		$this->level->setBlock($blockReplace, $this, true, true);
 
-		$nbt = new CompoundTag("", [
-			new StringTag("id", Tile::ITEM_FRAME),
-			new IntTag("x", $block->x),
-			new IntTag("y", $block->y),
-			new IntTag("z", $block->z),
-			new FloatTag("ItemDropChance", 1.0),
-			new ByteTag("ItemRotation", 0)
-		]);
-
-		if($item->hasCustomBlockData()){
-			foreach($item->getCustomBlockData() as $key => $v){
-				$nbt->{$key} = $v;
-			}
-		}
-
-		Tile::createTile(Tile::ITEM_FRAME, $this->getLevel(), $nbt);
+		Tile::createTile(Tile::ITEM_FRAME, $this->getLevel(), TileItemFrame::createNBT($this, $face, $item, $player));
 
 		return true;
 
 	}
 
-	public function getDrops(Item $item){
-		return [
-			[Item::ITEM_FRAME, 0, 1]
-		];
+	public function getVariantBitmask() : int{
+		return 0;
 	}
 
+	public function getDropsForCompatibleTool(Item $item) : array{
+		$drops = parent::getDropsForCompatibleTool($item);
+
+		$tile = $this->level->getTile($this);
+		if($tile instanceof TileItemFrame){
+			$tileItem = $tile->getItem();
+			if(lcg_value() <= $tile->getItemDropChance() and !$tileItem->isNull()){
+				$drops[] = $tileItem;
+			}
+		}
+
+		return $drops;
+	}
+
+	public function isAffectedBySilkTouch() : bool{
+		return false;
+	}
 }

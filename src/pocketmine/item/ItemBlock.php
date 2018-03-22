@@ -24,23 +24,35 @@ declare(strict_types=1);
 namespace pocketmine\item;
 
 use pocketmine\block\Block;
+use pocketmine\block\BlockFactory;
 
 /**
  * Class used for Items that can be Blocks
  */
 class ItemBlock extends Item{
-	public function __construct(Block $block, $meta = 0, int $count = 1){
-		$this->block = $block;
-		parent::__construct($block->getId(), $block->getDamage(), $count, $block->getName());
-	}
+	/** @var int */
+	protected $blockId;
 
-	public function setDamage(int $meta){
-		$this->meta = $meta !== -1 ? $meta & 0xf : -1;
-		$this->block->setDamage($this->meta !== -1 ? $this->meta : 0);
+	/**
+	 * @param int      $blockId
+	 * @param int      $meta usually 0-15 (placed blocks may only have meta values 0-15)
+	 * @param int|null $itemId
+	 */
+	public function __construct(int $blockId, int $meta = 0, int $itemId = null){
+		$this->blockId = $blockId;
+		parent::__construct($itemId ?? $blockId, $meta, $this->getBlock()->getName());
 	}
 
 	public function getBlock() : Block{
-		return $this->block;
+		return BlockFactory::get($this->blockId, $this->meta === -1 ? 0 : $this->meta & 0xf);
+	}
+
+	public function getVanillaName() : string{
+		return $this->getBlock()->getName();
+	}
+
+	public function getFuelTime() : int{
+		return $this->getBlock()->getFuelTime();
 	}
 
 }

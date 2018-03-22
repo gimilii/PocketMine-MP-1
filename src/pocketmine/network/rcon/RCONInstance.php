@@ -30,30 +30,35 @@ class RCONInstance extends Thread{
 	public $stop;
 	public $cmd;
 	public $response;
+	/** @var resource */
 	private $socket;
 	private $password;
 	private $maxClients;
 	private $waiting;
 
 	public function isWaiting(){
-		return $this->waiting === true;
+		return $this->waiting;
 	}
 
-
-	public function __construct($socket, $password, $maxClients = 50){
+	/**
+	 * @param resource $socket
+	 * @param string   $password
+	 * @param int      $maxClients
+	 */
+	public function __construct($socket, string $password, int $maxClients = 50){
 		$this->stop = false;
 		$this->cmd = "";
 		$this->response = "";
 		$this->socket = $socket;
 		$this->password = $password;
-		$this->maxClients = (int) $maxClients;
+		$this->maxClients = $maxClients;
 		for($n = 0; $n < $this->maxClients; ++$n){
 			$this->{"client" . $n} = null;
 			$this->{"status" . $n} = 0;
 			$this->{"timeout" . $n} = 0;
 		}
 
-		$this->start();
+		$this->start(PTHREADS_INHERIT_NONE);
 	}
 
 	private function writePacket($client, $requestID, $packetType, $payload){
@@ -67,7 +72,7 @@ class RCONInstance extends Thread{
 	private function readPacket($client, &$size, &$requestID, &$packetType, &$payload){
 		socket_set_nonblock($client);
 		$d = socket_read($client, 4);
-		if($this->stop === true){
+		if($this->stop){
 			return false;
 		}elseif($d === false){
 			return null;
@@ -90,8 +95,8 @@ class RCONInstance extends Thread{
 	}
 
 	public function run(){
-
-		while($this->stop !== true){
+		$this->registerClassLoader();
+		while(!$this->stop){
 			$this->synchronized(function(){
 				$this->wait(2000);
 			});
@@ -112,7 +117,7 @@ class RCONInstance extends Thread{
 							break;
 						}
 					}
-					if($done === false){
+					if(!$done){
 						@socket_close($client);
 					}
 				}
@@ -121,7 +126,7 @@ class RCONInstance extends Thread{
 			for($n = 0; $n < $this->maxClients; ++$n){
 				$client = &$this->{"client" . $n};
 				if($client !== null){
-					if($this->{"status" . $n} !== -1 and $this->stop !== true){
+					if($this->{"status" . $n} !== -1 and !$this->stop){
 						if($this->{"status" . $n} === 0 and $this->{"timeout" . $n} < microtime(true)){ //Timeout
 							$this->{"status" . $n} = -1;
 							continue;
@@ -192,7 +197,7 @@ class RCONInstance extends Thread{
 		exit(0);
 	}
 
-	public function getThreadName(){
+	public function getThreadName() : string{
 		return "RCON";
 	}
 }

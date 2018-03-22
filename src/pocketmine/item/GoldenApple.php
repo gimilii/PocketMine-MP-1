@@ -24,17 +24,16 @@ declare(strict_types=1);
 namespace pocketmine\item;
 
 use pocketmine\entity\Effect;
-use pocketmine\entity\Entity;
-use pocketmine\entity\Human;
+use pocketmine\entity\EffectInstance;
 
 class GoldenApple extends Food{
 
-	public function __construct($meta = 0, $count = 1){
-		parent::__construct(self::GOLDEN_APPLE, $meta, $count, "Golden Apple");
+	public function __construct(int $meta = 0){
+		parent::__construct(self::GOLDEN_APPLE, $meta, "Golden Apple");
 	}
 
-	public function canBeConsumedBy(Entity $entity) : bool{
-		return $entity instanceof Human;
+	public function requiresHunger() : bool{
+		return false;
 	}
 
 	public function getFoodRestore() : int{
@@ -47,9 +46,8 @@ class GoldenApple extends Food{
 
 	public function getAdditionalEffects() : array{
 		return [
-			Effect::getEffect(Effect::REGENERATION)->setDuration(100)->setAmplifier(1),
-			Effect::getEffect(Effect::ABSORPTION)->setDuration(2400)
+			new EffectInstance(Effect::getEffect(Effect::REGENERATION), 100, 1),
+			new EffectInstance(Effect::getEffect(Effect::ABSORPTION), 2400)
 		];
 	}
 }
-

@@ -26,54 +26,41 @@ namespace pocketmine\event\inventory;
 use pocketmine\event\Cancellable;
 use pocketmine\event\Event;
 use pocketmine\inventory\Recipe;
+use pocketmine\inventory\transaction\CraftingTransaction;
 use pocketmine\item\Item;
 use pocketmine\Player;
 
 class CraftItemEvent extends Event implements Cancellable{
-	public static $handlerList = null;
-
-	/** @var Item[] */
-	private $input = [];
-	/** @var Recipe */
-	private $recipe;
-	/** @var \pocketmine\Player */
-	private $player;
-
+	/** @var CraftingTransaction */
+	private $transaction;
 
 	/**
-	 * @param \pocketmine\Player $player
-	 * @param Item[]             $input
-	 * @param Recipe             $recipe
+	 * @param CraftingTransaction $transaction
 	 */
-	public function __construct(Player $player, array $input, Recipe $recipe){
-		$this->player = $player;
-		$this->input = $input;
-		$this->recipe = $recipe;
+	public function __construct(CraftingTransaction $transaction){
+		$this->transaction = $transaction;
 	}
 
-	/**
-	 * @return Item[]
-	 */
-	public function getInput(){
-		$items = [];
-		foreach($this->input as $i => $item){
-			$items[$i] = clone $item;
-		}
-
-		return $items;
+	public function getTransaction() : CraftingTransaction{
+		return $this->transaction;
 	}
 
 	/**
 	 * @return Recipe
 	 */
-	public function getRecipe(){
-		return $this->recipe;
+	public function getRecipe() : Recipe{
+		$recipe = $this->transaction->getRecipe();
+		if($recipe === null){
+			throw new \RuntimeException("This shouldn't be called if the transaction can't be executed");
+		}
+
+		return $recipe;
 	}
 
 	/**
-	 * @return \pocketmine\Player
+	 * @return Player
 	 */
-	public function getPlayer(){
-		return $this->player;
+	public function getPlayer() : Player{
+		return $this->transaction->getSource();
 	}
 }

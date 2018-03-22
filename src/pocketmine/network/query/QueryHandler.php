@@ -27,14 +27,15 @@ declare(strict_types=1);
  */
 namespace pocketmine\network\query;
 
+use pocketmine\network\AdvancedSourceInterface;
 use pocketmine\Server;
 use pocketmine\utils\Binary;
 
 class QueryHandler{
 	private $server, $lastToken, $token, $longData, $shortData, $timeout;
 
-	const HANDSHAKE = 9;
-	const STATISTICS = 0;
+	public const HANDSHAKE = 9;
+	public const STATISTICS = 0;
 
 	public function __construct(){
 		$this->server = Server::getInstance();
@@ -73,7 +74,7 @@ class QueryHandler{
 		return Binary::readInt(substr(hash("sha512", $salt . ":" . $token, true), 7, 4));
 	}
 
-	public function handle($address, $port, $packet){
+	public function handle(AdvancedSourceInterface $interface, string $address, int $port, string $packet){
 		$offset = 2;
 		$packetType = ord($packet{$offset++});
 		$sessionID = Binary::readInt(substr($packet, $offset, 4));
@@ -86,7 +87,7 @@ class QueryHandler{
 				$reply .= Binary::writeInt($sessionID);
 				$reply .= self::getTokenString($this->token, $address) . "\x00";
 
-				$this->server->getNetwork()->sendPacket($address, $port, $reply);
+				$interface->sendRawPacket($address, $port, $reply);
 				break;
 			case self::STATISTICS: //Stat
 				$token = Binary::readInt(substr($payload, 0, 4));
@@ -105,7 +106,7 @@ class QueryHandler{
 				}else{
 					$reply .= $this->shortData;
 				}
-				$this->server->getNetwork()->sendPacket($address, $port, $reply);
+				$interface->sendRawPacket($address, $port, $reply);
 				break;
 		}
 	}

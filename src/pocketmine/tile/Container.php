@@ -23,25 +23,18 @@ declare(strict_types=1);
 
 namespace pocketmine\tile;
 
-use pocketmine\item\Item;
+use pocketmine\inventory\Inventory;
 
 interface Container{
+	public const TAG_ITEMS = "Items";
 
 	/**
-	 * @param int $index
-	 *
-	 * @return Item
+	 * @return Inventory
 	 */
-	public function getItem($index);
+	public function getInventory();
 
 	/**
-	 * @param int  $index
-	 * @param Item $item
+	 * @return Inventory
 	 */
-	public function setItem($index, Item $item);
-
-	/**
-	 * @return int
-	 */
-	public function getSize();
+	public function getRealInventory();
 }

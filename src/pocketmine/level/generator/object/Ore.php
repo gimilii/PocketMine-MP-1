@@ -23,12 +23,15 @@ declare(strict_types=1);
 
 namespace pocketmine\level\generator\object;
 
+use pocketmine\block\Block;
 use pocketmine\level\ChunkManager;
 use pocketmine\math\VectorMath;
 use pocketmine\utils\Random;
 
 class Ore{
+	/** @var Random */
 	private $random;
+	/** @var OreType */
 	public $type;
 
 	public function __construct(Random $random, OreType $type){
@@ -36,18 +39,18 @@ class Ore{
 		$this->random = $random;
 	}
 
-	public function getType(){
+	public function getType() : OreType{
 		return $this->type;
 	}
 
-	public function canPlaceObject(ChunkManager $level, $x, $y, $z){
-		return ($level->getBlockIdAt($x, $y, $z) === 1);
+	public function canPlaceObject(ChunkManager $level, int $x, int $y, int $z) : bool{
+		return $level->getBlockIdAt($x, $y, $z) === Block::STONE;
 	}
 
-	public function placeObject(ChunkManager $level, $x, $y, $z){
-		$clusterSize = (int) $this->type->clusterSize;
+	public function placeObject(ChunkManager $level, int $x, int $y, int $z){
+		$clusterSize = $this->type->clusterSize;
 		$angle = $this->random->nextFloat() * M_PI;
-		$offset = VectorMath::getDirection2D($angle)->multiply($clusterSize)->divide(8);
+		$offset = VectorMath::getDirection2D($angle)->multiply($clusterSize / 8);
 		$x1 = $x + 8 + $offset->x;
 		$x2 = $x + 8 - $offset->x;
 		$z1 = $z + 8 + $offset->y;
@@ -81,7 +84,7 @@ class Ore{
 								$sizeZ = ($z + 0.5 - $seedZ) / $size;
 								$sizeZ *= $sizeZ;
 
-								if(($sizeX + $sizeY + $sizeZ) < 1 and $level->getBlockIdAt($x, $y, $z) === 1){
+								if(($sizeX + $sizeY + $sizeZ) < 1 and $level->getBlockIdAt($x, $y, $z) === Block::STONE){
 									$level->setBlockIdAt($x, $y, $z, $this->type->material->getId());
 									if($this->type->material->getDamage() !== 0){
 										$level->setBlockDataAt($x, $y, $z, $this->type->material->getDamage());

@@ -30,8 +30,6 @@ use pocketmine\Player;
  * Called when a player is respawned (or first time spawned)
  */
 class PlayerRespawnEvent extends PlayerEvent{
-	public static $handlerList = null;
-
 	/** @var Position */
 	protected $position;
 
@@ -47,7 +45,7 @@ class PlayerRespawnEvent extends PlayerEvent{
 	/**
 	 * @return Position
 	 */
-	public function getRespawnPosition(){
+	public function getRespawnPosition() : Position{
 		return $this->position;
 	}
 

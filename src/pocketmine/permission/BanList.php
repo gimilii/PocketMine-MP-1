@@ -40,28 +40,39 @@ class BanList{
 	/**
 	 * @param string $file
 	 */
-	public function __construct($file){
+	public function __construct(string $file){
 		$this->file = $file;
 	}
 
 	/**
 	 * @return bool
 	 */
-	public function isEnabled(){
-		return $this->enabled === true;
+	public function isEnabled() : bool{
+		return $this->enabled;
 	}
 
 	/**
 	 * @param bool $flag
 	 */
-	public function setEnabled($flag){
-		$this->enabled = (bool) $flag;
+	public function setEnabled(bool $flag){
+		$this->enabled = $flag;
+	}
+
+	/**
+	 * @param string $name
+	 *
+	 * @return BanEntry|null
+	 */
+	public function getEntry(string $name) : ?BanEntry{
+		$this->removeExpired();
+
+		return $this->list[strtolower($name)] ?? null;
 	}
 
 	/**
 	 * @return BanEntry[]
 	 */
-	public function getEntries(){
+	public function getEntries() : array{
 		$this->removeExpired();
 
 		return $this->list;
@@ -72,7 +83,7 @@ class BanList{
 	 *
 	 * @return bool
 	 */
-	public function isBanned($name){
+	public function isBanned(string $name) : bool{
 		$name = strtolower($name);
 		if(!$this->isEnabled()){
 			return false;
@@ -99,11 +110,11 @@ class BanList{
 	 *
 	 * @return BanEntry
 	 */
-	public function addBan($target, $reason = null, $expires = null, $source = null){
+	public function addBan(string $target, string $reason = null, \DateTime $expires = null, string $source = null) : BanEntry{
 		$entry = new BanEntry($target);
-		$entry->setSource($source != null ? $source : $entry->getSource());
+		$entry->setSource($source ?? $entry->getSource());
 		$entry->setExpires($expires);
-		$entry->setReason($reason != null ? $reason : $entry->getReason());
+		$entry->setReason($reason ?? $entry->getReason());
 
 		$this->list[$entry->getName()] = $entry;
 		$this->save();
@@ -114,7 +125,7 @@ class BanList{
 	/**
 	 * @param string $name
 	 */
-	public function remove($name){
+	public function remove(string $name){
 		$name = strtolower($name);
 		if(isset($this->list[$name])){
 			unset($this->list[$name]);
@@ -136,9 +147,15 @@ class BanList{
 		if(is_resource($fp)){
 			while(($line = fgets($fp)) !== false){
 				if($line{0} !== "#"){
-					$entry = BanEntry::fromString($line);
-					if($entry instanceof BanEntry){
-						$this->list[$entry->getName()] = $entry;
+					try{
+						$entry = BanEntry::fromString($line);
+						if($entry instanceof BanEntry){
+							$this->list[$entry->getName()] = $entry;
+						}
+					}catch(\Throwable $e){
+						$logger = MainLogger::getLogger();
+						$logger->critical("Failed to parse ban entry from string \"$line\": " . $e->getMessage());
+						$logger->logException($e);
 					}
 				}
 			}
@@ -148,11 +165,14 @@ class BanList{
 		}
 	}
 
-	public function save($flag = true){
+	/**
+	 * @param bool $flag
+	 */
+	public function save(bool $flag = true){
 		$this->removeExpired();
 		$fp = @fopen($this->file, "w");
 		if(is_resource($fp)){
-			if($flag === true){
+			if($flag){
 				fwrite($fp, "# Updated " . strftime("%x %H:%M", time()) . " by " . Server::getInstance()->getName() . " " . Server::getInstance()->getPocketMineVersion() . "\n");
 				fwrite($fp, "# victim name | ban date | banned by | banned until | reason\n\n");
 			}

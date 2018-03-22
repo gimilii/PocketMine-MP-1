@@ -23,22 +23,23 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
+use pocketmine\item\enchantment\Enchantment;
 use pocketmine\item\Item;
-use pocketmine\item\Tool;
+use pocketmine\Player;
 
 class Ice extends Transparent{
 
 	protected $id = self::ICE;
 
-	public function __construct($meta = 0){
+	public function __construct(int $meta = 0){
 		$this->meta = $meta;
 	}
 
-	public function getName(){
+	public function getName() : string{
 		return "Ice";
 	}
 
-	public function getHardness(){
+	public function getHardness() : float{
 		return 0.5;
 	}
 
@@ -46,17 +47,32 @@ class Ice extends Transparent{
 		return 2;
 	}
 
-	public function getToolType(){
-		return Tool::TYPE_PICKAXE;
+	public function getFrictionFactor() : float{
+		return 0.98;
 	}
 
-	public function onBreak(Item $item){
-		$this->getLevel()->setBlock($this, new Water(), true);
+	public function getToolType() : int{
+		return BlockToolType::TYPE_PICKAXE;
+	}
 
+	public function onBreak(Item $item, Player $player = null) : bool{
+		if(!$item->hasEnchantment(Enchantment::SILK_TOUCH)){
+			return $this->getLevel()->setBlock($this, BlockFactory::get(Block::WATER), true);
+		}
+		return parent::onBreak($item, $player);
+	}
+
+	public function ticksRandomly() : bool{
 		return true;
 	}
 
-	public function getDrops(Item $item){
+	public function onRandomTick() : void{
+		if($this->level->getHighestAdjacentBlockLight($this->x, $this->y, $this->z) >= 12){
+			$this->level->useBreakOn($this);
+		}
+	}
+
+	public function getDropsForCompatibleTool(Item $item) : array{
 		return [];
 	}
 }

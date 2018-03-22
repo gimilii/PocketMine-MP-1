@@ -30,7 +30,7 @@ use pocketmine\block\Block;
 use pocketmine\event\Event;
 
 abstract class BlockEvent extends Event{
-	/** @var \pocketmine\block\Block */
+	/** @var Block */
 	protected $block;
 
 	/**
@@ -43,7 +43,7 @@ abstract class BlockEvent extends Event{
 	/**
 	 * @return Block
 	 */
-	public function getBlock(){
+	public function getBlock() : Block{
 		return $this->block;
 	}
 }

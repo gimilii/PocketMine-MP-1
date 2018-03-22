@@ -31,8 +31,6 @@ use pocketmine\Player;
  * Called when a player eats something
  */
 class PlayerItemConsumeEvent extends PlayerEvent implements Cancellable{
-	public static $handlerList = null;
-
 	/** @var Item */
 	private $item;
 
@@ -48,7 +46,7 @@ class PlayerItemConsumeEvent extends PlayerEvent implements Cancellable{
 	/**
 	 * @return Item
 	 */
-	public function getItem(){
+	public function getItem() : Item{
 		return clone $this->item;
 	}
 
