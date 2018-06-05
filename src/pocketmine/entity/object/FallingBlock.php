@@ -50,7 +50,7 @@ class FallingBlock extends Entity{
 
 	public $canCollide = false;
 
-	protected function initEntity(){
+	protected function initEntity() : void{
 		parent::initEntity();
 
 		$blockId = 0;
@@ -72,14 +72,18 @@ class FallingBlock extends Entity{
 
 		$this->block = BlockFactory::get($blockId, $damage);
 
-		$this->propertyManager->setInt(self::DATA_VARIANT, $this->block->getId() | ($this->block->getDamage() << 8));
+		$this->propertyManager->setInt(self::DATA_VARIANT, BlockFactory::toStaticRuntimeId($this->block->getId(), $this->block->getDamage()));
 	}
 
 	public function canCollideWith(Entity $entity) : bool{
 		return false;
 	}
 
-	public function attack(EntityDamageEvent $source){
+	public function canBeMovedByCurrents() : bool{
+		return false;
+	}
+
+	public function attack(EntityDamageEvent $source) : void{
 		if($source->getCause() === EntityDamageEvent::CAUSE_VOID){
 			parent::attack($source);
 		}
@@ -122,15 +126,15 @@ class FallingBlock extends Entity{
 		return $hasUpdate;
 	}
 
-	public function getBlock(){
+	public function getBlock() : int{
 		return $this->block->getId();
 	}
 
-	public function getDamage(){
+	public function getDamage() : int{
 		return $this->block->getDamage();
 	}
 
-	public function saveNBT(){
+	public function saveNBT() : void{
 		$this->namedtag->setInt("TileID", $this->block->getId(), true);
 		$this->namedtag->setByte("Data", $this->block->getDamage());
 	}
