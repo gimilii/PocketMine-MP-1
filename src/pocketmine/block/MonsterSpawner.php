@@ -64,6 +64,7 @@ class MonsterSpawner extends Transparent{
 	public function isAffectedBySilkTouch() : bool{
 		return false;
 	}
+
 	
 	public function canBeActivated() : bool {
 		return true;
@@ -102,5 +103,9 @@ class MonsterSpawner extends Transparent{
 		new MobSpawner($this->getLevel(), $nbt);
 		// 		Tile::createTile("MobSpawner", $this->getLevel(), $nbt);
 		return true;
+  }
+
+	protected function getXpDropAmount() : int{
+		return mt_rand(15, 43);
 	}
 }
