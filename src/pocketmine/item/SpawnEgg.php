@@ -34,20 +34,24 @@ class SpawnEgg extends Item{
 	}
 
 	public function onActivate(Player $player, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector) : bool{
-		$nbt = Entity::createBaseNBT($blockReplace->add(0.5, 0, 0.5), null, lcg_value() * 360, 0);
-
-		if($this->hasCustomName()){
-			$nbt->setString("CustomName", $this->getCustomName());
-		}
-
-		$entity = Entity::createEntity($this->meta, $player->getLevel(), $nbt);
-
-		if($entity instanceof Entity){
-			--$this->count;
-			$entity->spawnToAll();
+		if($blockReplace->getId() == Block::MONSTER_SPAWNER){
 			return true;
+		}else{
+			$nbt = Entity::createBaseNBT($blockReplace->add(0.5, 0, 0.5), null, lcg_value() * 360, 0);
+	
+			if($this->hasCustomName()){
+				$nbt->setString("CustomName", $this->getCustomName());
+			}
+	
+			$entity = Entity::createEntity($this->meta, $player->getLevel(), $nbt);
+	
+			if($entity instanceof Entity){
+				--$this->count;
+				$entity->spawnToAll();
+				return true;
+			}
+	
+			return false;
 		}
-
-		return false;
 	}
 }

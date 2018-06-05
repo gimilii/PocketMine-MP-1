@@ -25,6 +25,13 @@ namespace pocketmine\block;
 
 use pocketmine\item\Item;
 use pocketmine\item\TieredTool;
+use pocketmine\nbt\tag\CompoundTag;
+use pocketmine\nbt\tag\IntTag;
+use pocketmine\nbt\tag\StringTag;
+use pocketmine\tile\Tile;
+use pocketmine\tile\MobSpawner;
+use pocketmine\math\Vector3;
+use pocketmine\Player;
 
 class MonsterSpawner extends Transparent{
 
@@ -57,6 +64,46 @@ class MonsterSpawner extends Transparent{
 	public function isAffectedBySilkTouch() : bool{
 		return false;
 	}
+
+	
+	public function canBeActivated() : bool {
+		return true;
+	}
+	
+	public function onActivate(Item $item, Player $player = null) : bool{
+		if($this->getDamage() == 0){
+			if($item->getId() == Item::SPAWN_EGG){
+				$tile = $this->getLevel()->getTile($this);
+				if($tile instanceof MobSpawner){
+					$this->meta = $item->getDamage();
+					//$this->getLevel()->setBlock($this, $this, true, false);
+					$tile->setEntityId($this->meta);
+				}
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	public function place(Item $item, Block $block, Block $target, int $face, Vector3 $clickVector, Player $player = null) : bool {
+		$this->getLevel()->setBlock($block, $this, true, true);
+		$nbt = new CompoundTag("", [
+				new StringTag("id", Tile::MOB_SPAWNER),
+				new IntTag("x", $block->x),
+				new IntTag("y", $block->y),
+				new IntTag("z", $block->z),
+				new IntTag("EntityId", 0),
+		]);
+		
+		if($item->hasCustomBlockData()){
+			foreach($item->getCustomBlockData() as $key => $v){
+				$nbt->{$key} = $v;
+			}
+		}
+		new MobSpawner($this->getLevel(), $nbt);
+		// 		Tile::createTile("MobSpawner", $this->getLevel(), $nbt);
+		return true;
+  }
 
 	protected function getXpDropAmount() : int{
 		return mt_rand(15, 43);
