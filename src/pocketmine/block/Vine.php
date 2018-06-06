@@ -205,12 +205,4 @@ class Vine extends Flowable{
 	public function getToolType() : int{
 		return BlockToolType::TYPE_AXE;
 	}
-
-	public function getFlameEncouragement() : int{
-		return 15;
-	}
-
-	public function getFlammability() : int{
-		return 100;
-	}
 }

@@ -24,30 +24,40 @@ declare(strict_types=1);
 namespace pocketmine\inventory;
 
 use pocketmine\item\Item;
+use pocketmine\utils\UUID;
 
 interface CraftingRecipe extends Recipe{
-	/**
-	 * Returns a list of items needed to craft this recipe. This MUST NOT include Air items or items with a zero count.
-	 *
-	 * @return Item[]
-	 */
-	public function getIngredientList() : array;
 
 	/**
-	 * Returns a list of results this recipe will produce when the inputs in the given crafting grid are consumed.
-	 *
-	 * @param CraftingGrid $grid
-	 *
-	 * @return Item[]
+	 * @return UUID|null
 	 */
-	public function getResultsFor(CraftingGrid $grid) : array;
+	public function getId() : ?UUID;
 
 	/**
-	 * Returns whether the given crafting grid meets the requirements to craft this recipe.
+	 * @param UUID $id
+	 */
+	public function setId(UUID $id);
+
+	public function requiresCraftingTable() : bool;
+
+	/**
+	 * @return Item[]
+	 */
+	public function getExtraResults() : array;
+
+	/**
+	 * @return Item[]
+	 */
+	public function getAllResults() : array;
+
+	/**
+	 * Returns whether the specified list of crafting grid inputs and outputs matches this recipe. Outputs DO NOT
+	 * include the primary result item.
 	 *
-	 * @param CraftingGrid $grid
+	 * @param Item[][] $input 2D array of items taken from the crafting grid
+	 * @param Item[][] $output 2D array of items put back into the crafting grid (secondary results)
 	 *
 	 * @return bool
 	 */
-	public function matchesCraftingGrid(CraftingGrid $grid) : bool;
+	public function matchItems(array $input, array $output) : bool;
 }

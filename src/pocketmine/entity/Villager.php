@@ -39,7 +39,7 @@ class Villager extends Creature implements NPC, Ageable{
 		return "Villager";
 	}
 
-	protected function initEntity() : void{
+	protected function initEntity(){
 		parent::initEntity();
 
 		/** @var int $profession */
@@ -52,7 +52,7 @@ class Villager extends Creature implements NPC, Ageable{
 		$this->setProfession($profession);
 	}
 
-	public function saveNBT() : void{
+	public function saveNBT(){
 		parent::saveNBT();
 		$this->namedtag->setInt("Profession", $this->getProfession());
 	}
@@ -62,7 +62,7 @@ class Villager extends Creature implements NPC, Ageable{
 	 *
 	 * @param int $profession
 	 */
-	public function setProfession(int $profession) : void{
+	public function setProfession(int $profession){
 		$this->propertyManager->setInt(self::DATA_VARIANT, $profession);
 	}
 

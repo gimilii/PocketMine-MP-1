@@ -23,14 +23,12 @@ declare(strict_types=1);
 
 namespace pocketmine\entity\object;
 
-use pocketmine\block\Block;
-use pocketmine\block\BlockFactory;
 use pocketmine\entity\Entity;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
 use pocketmine\level\Level;
-use pocketmine\level\particle\DestroyBlockParticle;
+use pocketmine\level\particle\DestroyParticle;
 use pocketmine\math\AxisAlignedBB;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\ByteTag;
@@ -46,18 +44,14 @@ class Painting extends Entity{
 	/** @var float */
 	protected $drag = 1.0;
 
-	//these aren't accurate, but it doesn't matter since they aren't used (vanilla PC does something similar)
-	/** @var float */
-	public $height = 0.5;
-	/** @var float */
-	public $width = 0.5;
-
 	/** @var Vector3 */
 	protected $blockIn;
 	/** @var int */
 	protected $direction = 0;
 	/** @var string */
 	protected $motive;
+	/** @var int */
+	protected $checkDestroyedTicker = 0;
 
 	public function __construct(Level $level, CompoundTag $nbt){
 		$this->motive = $nbt->getString("Motive");
@@ -70,13 +64,13 @@ class Painting extends Entity{
 		parent::__construct($level, $nbt);
 	}
 
-	protected function initEntity() : void{
+	protected function initEntity(){
 		$this->setMaxHealth(1);
 		$this->setHealth(1);
 		parent::initEntity();
 	}
 
-	public function saveNBT() : void{
+	public function saveNBT(){
 		parent::saveNBT();
 		$this->namedtag->setInt("TileX", (int) $this->blockIn->x);
 		$this->namedtag->setInt("TileY", (int) $this->blockIn->y);
@@ -86,7 +80,34 @@ class Painting extends Entity{
 		$this->namedtag->setByte("Direction", (int) $this->direction); //Save both for full compatibility
 	}
 
-	public function kill() : void{
+	public function entityBaseTick(int $tickDiff = 1) : bool{
+		static $directions = [
+			0 => Vector3::SIDE_SOUTH,
+			1 => Vector3::SIDE_WEST,
+			2 => Vector3::SIDE_NORTH,
+			3 => Vector3::SIDE_EAST
+		];
+
+		$hasUpdate = parent::entityBaseTick($tickDiff);
+
+		if($this->checkDestroyedTicker++ > 10){
+			/*
+			 * we don't have a way to only update on local block updates yet! since random chunk ticking always updates
+			 * all the things
+			 * ugly hack, but vanilla uses 100 ticks so on there it looks even worse
+			 */
+			$this->checkDestroyedTicker = 0;
+			$face = $directions[$this->direction];
+			if(!self::canFit($this->level, $this->blockIn->getSide($face), $face, false, $this->getMotive())){
+				$this->kill();
+				$hasUpdate = true;
+			}
+		}
+
+		return $hasUpdate; //doesn't need to be ticked always
+	}
+
+	public function kill(){
 		parent::kill();
 
 		$drops = true;
@@ -102,7 +123,7 @@ class Painting extends Entity{
 			//non-living entities don't have a way to create drops generically yet
 			$this->level->dropItem($this, ItemFactory::get(Item::PAINTING));
 		}
-		$this->level->addParticle(new DestroyBlockParticle($this->add(0.5, 0.5, 0.5), BlockFactory::get(Block::PLANKS)));
+		$this->level->addParticle(new DestroyParticle($this->add(0.5, 0.5, 0.5), Item::PAINTING));
 	}
 
 	protected function recalculateBoundingBox() : void{
@@ -118,27 +139,11 @@ class Painting extends Entity{
 		$this->boundingBox->setBB(self::getPaintingBB($this->blockIn->getSide($facing), $facing, $this->getMotive()));
 	}
 
-	public function onNearbyBlockChange() : void{
-		parent::onNearbyBlockChange();
-
-		static $directions = [
-			0 => Vector3::SIDE_SOUTH,
-			1 => Vector3::SIDE_WEST,
-			2 => Vector3::SIDE_NORTH,
-			3 => Vector3::SIDE_EAST
-		];
-
-		$face = $directions[$this->direction];
-		if(!self::canFit($this->level, $this->blockIn->getSide($face), $face, false, $this->getMotive())){
-			$this->kill();
-		}
+	protected function tryChangeMovement(){
+		$this->motionX = $this->motionY = $this->motionZ = 0;
 	}
 
-	public function hasMovementUpdate() : bool{
-		return false;
-	}
-
-	protected function updateMovement(bool $teleport = false) : void{
+	protected function updateMovement(bool $teleport = false){
 
 	}
 
@@ -166,7 +171,7 @@ class Painting extends Entity{
 		return PaintingMotive::getMotiveByName($this->motive);
 	}
 
-	public function getDirection() : ?int{
+	public function getDirection() : int{
 		return $this->direction;
 	}
 

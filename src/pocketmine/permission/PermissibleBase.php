@@ -187,11 +187,11 @@ class PermissibleBase implements Permissible{
 	}
 
 	/**
-	 * @param bool[]                    $children
-	 * @param bool                      $invert
-	 * @param PermissionAttachment|null $attachment
+	 * @param bool[]               $children
+	 * @param bool                 $invert
+	 * @param PermissionAttachment $attachment
 	 */
-	private function calculateChildPermissions(array $children, bool $invert, ?PermissionAttachment $attachment){
+	private function calculateChildPermissions(array $children, $invert, $attachment){
 		foreach($children as $name => $v){
 			$perm = Server::getInstance()->getPluginManager()->getPermission($name);
 			$value = ($v xor $invert);

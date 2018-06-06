@@ -25,6 +25,7 @@ namespace pocketmine\item;
 
 use pocketmine\block\Block;
 use pocketmine\block\BlockFactory;
+use pocketmine\block\Solid;
 use pocketmine\math\Vector3;
 use pocketmine\network\mcpe\protocol\LevelSoundEventPacket;
 use pocketmine\Player;
@@ -35,7 +36,7 @@ class FlintSteel extends Tool{
 	}
 
 	public function onActivate(Player $player, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector) : bool{
-		if($blockReplace->getId() === self::AIR){
+		if($blockReplace->getId() === self::AIR and ($blockClicked instanceof Solid)){
 			$level = $player->getLevel();
 			assert($level !== null);
 			$level->setBlock($blockReplace, BlockFactory::get(Block::FIRE), true);

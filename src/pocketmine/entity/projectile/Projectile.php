@@ -55,20 +55,20 @@ abstract class Projectile extends Entity{
 	/** @var int|null */
 	protected $blockHitData;
 
-	public function __construct(Level $level, CompoundTag $nbt, ?Entity $shootingEntity = null){
+	public function __construct(Level $level, CompoundTag $nbt, Entity $shootingEntity = null){
 		parent::__construct($level, $nbt);
 		if($shootingEntity !== null){
 			$this->setOwningEntity($shootingEntity);
 		}
 	}
 
-	public function attack(EntityDamageEvent $source) : void{
+	public function attack(EntityDamageEvent $source){
 		if($source->getCause() === EntityDamageEvent::CAUSE_VOID){
 			parent::attack($source);
 		}
 	}
 
-	protected function initEntity() : void{
+	protected function initEntity(){
 		parent::initEntity();
 
 		$this->setMaxHealth(1);
@@ -117,10 +117,10 @@ abstract class Projectile extends Entity{
 	 * @return int
 	 */
 	public function getResultDamage() : int{
-		return (int) ceil($this->motion->length() * $this->damage);
+		return (int) ceil(sqrt($this->motionX ** 2 + $this->motionY ** 2 + $this->motionZ ** 2) * $this->damage);
 	}
 
-	public function saveNBT() : void{
+	public function saveNBT(){
 		parent::saveNBT();
 
 		$this->namedtag->setShort("Age", $this->age);
@@ -159,7 +159,7 @@ abstract class Projectile extends Entity{
 		Timings::$entityMoveTimer->startTiming();
 
 		$start = $this->asVector3();
-		$end = $start->add($this->motion);
+		$end = $start->add($this->motionX, $this->motionY, $this->motionZ);
 
 		$blockHit = null;
 		$entityHit = null;
@@ -230,15 +230,15 @@ abstract class Projectile extends Entity{
 			}
 
 			$this->isCollided = $this->onGround = true;
-			$this->motion->x = $this->motion->y = $this->motion->z = 0;
+			$this->motionX = $this->motionY = $this->motionZ = 0;
 		}else{
 			$this->isCollided = $this->onGround = false;
 			$this->blockHit = $this->blockHitId = $this->blockHitData = null;
 
 			//recompute angles...
-			$f = sqrt(($this->motion->x ** 2) + ($this->motion->z ** 2));
-			$this->yaw = (atan2($this->motion->x, $this->motion->z) * 180 / M_PI);
-			$this->pitch = (atan2($this->motion->y, $f) * 180 / M_PI);
+			$f = sqrt(($this->motionX ** 2) + ($this->motionZ ** 2));
+			$this->yaw = (atan2($this->motionX, $this->motionZ) * 180 / M_PI);
+			$this->pitch = (atan2($this->motionY, $f) * 180 / M_PI);
 		}
 
 		$this->checkChunks();

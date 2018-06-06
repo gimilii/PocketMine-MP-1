@@ -36,22 +36,22 @@ class PlayerInputPacket extends DataPacket{
 	/** @var float */
 	public $motionY;
 	/** @var bool */
-	public $jumping;
+	public $unknownBool1;
 	/** @var bool */
-	public $sneaking;
+	public $unknownBool2;
 
 	protected function decodePayload(){
 		$this->motionX = $this->getLFloat();
 		$this->motionY = $this->getLFloat();
-		$this->jumping = $this->getBool();
-		$this->sneaking = $this->getBool();
+		$this->unknownBool1 = $this->getBool();
+		$this->unknownBool2 = $this->getBool();
 	}
 
 	protected function encodePayload(){
 		$this->putLFloat($this->motionX);
 		$this->putLFloat($this->motionY);
-		$this->putBool($this->jumping);
-		$this->putBool($this->sneaking);
+		$this->putBool($this->unknownBool1);
+		$this->putBool($this->unknownBool2);
 	}
 
 	public function handle(NetworkSession $session) : bool{

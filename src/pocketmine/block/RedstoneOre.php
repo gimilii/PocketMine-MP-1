@@ -70,8 +70,4 @@ class RedstoneOre extends Solid{
 			ItemFactory::get(Item::REDSTONE_DUST, 0, mt_rand(4, 5))
 		];
 	}
-
-	protected function getXpDropAmount() : int{
-		return mt_rand(1, 5);
-	}
 }

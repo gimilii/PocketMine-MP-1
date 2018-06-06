@@ -56,12 +56,4 @@ class Dandelion extends Flowable{
 			$this->getLevel()->useBreakOn($this);
 		}
 	}
-
-	public function getFlameEncouragement() : int{
-		return 60;
-	}
-
-	public function getFlammability() : int{
-		return 100;
-	}
 }

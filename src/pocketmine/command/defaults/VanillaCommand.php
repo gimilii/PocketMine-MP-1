@@ -25,9 +25,6 @@ namespace pocketmine\command\defaults;
 
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
-use pocketmine\command\utils\InvalidCommandSyntaxException;
-use pocketmine\lang\TranslationContainer;
-use pocketmine\utils\TextFormat;
 
 abstract class VanillaCommand extends Command{
 	public const MAX_COORD = 30000000;
@@ -90,23 +87,5 @@ abstract class VanillaCommand extends Command{
 		}
 
 		return $i;
-	}
-
-	protected function getBoundedInt(CommandSender $sender, string $input, int $min, int $max) : ?int{
-		if(!is_numeric($input)){
-			throw new InvalidCommandSyntaxException();
-		}
-
-		$v = (int) $input;
-		if($v > $max){
-			$sender->sendMessage(new TranslationContainer(TextFormat::RED . "%commands.generic.num.tooBig", [$input, (string) $max]));
-			return null;
-		}
-		if($v < $min){
-			$sender->sendMessage(new TranslationContainer(TextFormat::RED . "%commands.generic.num.tooSmall", [$input, (string) $min]));
-			return null;
-		}
-
-		return $v;
 	}
 }

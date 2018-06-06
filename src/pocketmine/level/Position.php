@@ -39,7 +39,7 @@ class Position extends Vector3{
 	 */
 	public function __construct($x = 0, $y = 0, $z = 0, Level $level = null){
 		parent::__construct($x, $y, $z);
-		$this->setLevel($level);
+		$this->level = $level;
 	}
 
 	public static function fromObject(Vector3 $pos, Level $level = null){
@@ -94,13 +94,7 @@ class Position extends Vector3{
 	 * @return bool
 	 */
 	public function isValid() : bool{
-		if($this->level !== null and $this->level->isClosed()){
-			$this->level = null;
-
-			return false;
-		}
-
-		return $this->level !== null;
+		return $this->getLevel() instanceof Level;
 	}
 
 	/**

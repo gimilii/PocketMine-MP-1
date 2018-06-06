@@ -23,11 +23,10 @@ declare(strict_types=1);
 
 namespace pocketmine\item;
 
-use pocketmine\entity\Entity;
-
 class Hoe extends TieredTool{
 
-	public function onAttackEntity(Entity $victim) : bool{
-		return $this->applyDamage(1);
+	public function isHoe(){
+		return $this->tier;
 	}
+
 }

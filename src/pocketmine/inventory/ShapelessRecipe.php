@@ -24,32 +24,50 @@ declare(strict_types=1);
 namespace pocketmine\inventory;
 
 use pocketmine\item\Item;
+use pocketmine\utils\UUID;
 
 class ShapelessRecipe implements CraftingRecipe{
+	/** @var Item */
+	private $output;
+
+	/** @var UUID|null */
+	private $id = null;
+
 	/** @var Item[] */
 	private $ingredients = [];
-	/** @var Item[] */
-	private $results;
+
+	public function __construct(Item $result){
+		$this->output = clone $result;
+	}
 
 	/**
-	 * @param Item[] $ingredients No more than 9 total. This applies to sum of item stack counts, not count of array.
-	 * @param Item[] $results List of result items created by this recipe.
+	 * @return UUID|null
 	 */
-	public function __construct(array $ingredients, array $results){
-		foreach($ingredients as $item){
-			//Ensure they get split up properly
-			$this->addIngredient($item);
+	public function getId() : ?UUID{
+		return $this->id;
+	}
+
+	/**
+	 * @param UUID $id
+	 */
+	public function setId(UUID $id){
+		if($this->id !== null){
+			throw new \InvalidStateException("Id is already set");
 		}
 
-		$this->results = array_map(function(Item $item) : Item{ return clone $item; }, $results);
+		$this->id = $id;
 	}
 
-	public function getResults() : array{
-		return array_map(function(Item $item) : Item{ return clone $item; }, $this->results);
+	public function getResult() : Item{
+		return clone $this->output;
 	}
 
-	public function getResultsFor(CraftingGrid $grid) : array{
-		return $this->getResults();
+	public function getExtraResults() : array{
+		return []; //TODO
+	}
+
+	public function getAllResults() : array{
+		return [$this->getResult()]; //TODO
 	}
 
 	/**
@@ -60,7 +78,7 @@ class ShapelessRecipe implements CraftingRecipe{
 	 * @throws \InvalidArgumentException
 	 */
 	public function addIngredient(Item $item) : ShapelessRecipe{
-		if(count($this->ingredients) + $item->getCount() > 9){
+		if(count($this->ingredients) >= 9){
 			throw new \InvalidArgumentException("Shapeless recipes cannot have more than 9 ingredients");
 		}
 
@@ -94,7 +112,12 @@ class ShapelessRecipe implements CraftingRecipe{
 	 * @return Item[]
 	 */
 	public function getIngredientList() : array{
-		return array_map(function(Item $item) : Item{ return clone $item; }, $this->ingredients);
+		$ingredients = [];
+		foreach($this->ingredients as $ingredient){
+			$ingredients[] = clone $ingredient;
+		}
+
+		return $ingredients;
 	}
 
 	/**
@@ -113,26 +136,58 @@ class ShapelessRecipe implements CraftingRecipe{
 		$manager->registerShapelessRecipe($this);
 	}
 
+	public function requiresCraftingTable() : bool{
+		return count($this->ingredients) > 4;
+	}
+
 	/**
-	 * @param CraftingGrid $grid
+	 * @param Item[][] $input
+	 * @param Item[][] $output
 	 *
 	 * @return bool
 	 */
-	public function matchesCraftingGrid(CraftingGrid $grid) : bool{
-		//don't pack the ingredients - shapeless recipes require that each ingredient be in a separate slot
-		$input = $grid->getContents();
+	public function matchItems(array $input, array $output) : bool{
+		/** @var Item[] $haveInputs */
+		$haveInputs = array_merge(...$input); //we don't care how the items were arranged
+		$needInputs = $this->getIngredientList();
 
-		foreach($this->ingredients as $needItem){
-			foreach($input as $j => $haveItem){
-				if($haveItem->equals($needItem, !$needItem->hasAnyDamageValue(), $needItem->hasCompoundTag()) and $haveItem->getCount() >= $needItem->getCount()){
-					unset($input[$j]);
-					continue 2;
-				}
-			}
-
-			return false; //failed to match the needed item to a given item
+		if(!$this->matchItemList($haveInputs, $needInputs)){
+			return false;
 		}
 
-		return empty($input); //crafting grid should be empty apart from the given ingredient stacks
+		/** @var Item[] $haveOutputs */
+		$haveOutputs = array_merge(...$output);
+		$needOutputs = $this->getExtraResults();
+
+		if(!$this->matchItemList($haveOutputs, $needOutputs)){
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * @param Item[] $haveItems
+	 * @param Item[] $needItems
+	 *
+	 * @return bool
+	 */
+	private function matchItemList(array $haveItems, array $needItems) : bool{
+		foreach($haveItems as $j => $haveItem){
+			if($haveItem->isNull()){
+				unset($haveItems[$j]);
+				continue;
+			}
+
+
+			foreach($needItems as $i => $needItem){
+				if($needItem->equals($haveItem, !$needItem->hasAnyDamageValue(), $needItem->hasCompoundTag()) and $needItem->getCount() === $haveItem->getCount()){
+					unset($haveItems[$j], $needItems[$i]);
+					break;
+				}
+			}
+		}
+
+		return count($haveItems) === 0 and count($needItems) === 0;
 	}
 }

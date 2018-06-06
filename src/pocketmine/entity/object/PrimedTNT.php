@@ -47,13 +47,13 @@ class PrimedTNT extends Entity implements Explosive{
 	public $canCollide = false;
 
 
-	public function attack(EntityDamageEvent $source) : void{
+	public function attack(EntityDamageEvent $source){
 		if($source->getCause() === EntityDamageEvent::CAUSE_VOID){
 			parent::attack($source);
 		}
 	}
 
-	protected function initEntity() : void{
+	protected function initEntity(){
 		parent::initEntity();
 
 		if($this->namedtag->hasTag("Fuse", ShortTag::class)){
@@ -73,7 +73,7 @@ class PrimedTNT extends Entity implements Explosive{
 		return false;
 	}
 
-	public function saveNBT() : void{
+	public function saveNBT(){
 		parent::saveNBT();
 		$this->namedtag->setShort("Fuse", $this->fuse, true); //older versions incorrectly saved this as a byte
 	}
@@ -101,7 +101,7 @@ class PrimedTNT extends Entity implements Explosive{
 		return $hasUpdate or $this->fuse >= 0;
 	}
 
-	public function explode() : void{
+	public function explode(){
 		$this->server->getPluginManager()->callEvent($ev = new ExplosionPrimeEvent($this, 4));
 
 		if(!$ev->isCancelled()){

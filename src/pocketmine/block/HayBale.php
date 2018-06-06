@@ -54,12 +54,4 @@ class HayBale extends Solid{
 	public function getVariantBitmask() : int{
 		return 0x03;
 	}
-
-	public function getFlameEncouragement() : int{
-		return 60;
-	}
-
-	public function getFlammability() : int{
-		return 20;
-	}
 }

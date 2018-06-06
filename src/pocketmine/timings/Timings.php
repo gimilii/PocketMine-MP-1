@@ -27,6 +27,7 @@ use pocketmine\entity\Entity;
 use pocketmine\network\mcpe\protocol\DataPacket;
 use pocketmine\Player;
 use pocketmine\plugin\PluginManager;
+use pocketmine\scheduler\PluginTask;
 use pocketmine\scheduler\TaskHandler;
 use pocketmine\tile\Tile;
 
@@ -69,8 +70,6 @@ abstract class Timings{
 
 	/** @var TimingsHandler */
 	public static $entityMoveTimer;
-	/** @var TimingsHandler */
-	public static $playerCheckNearEntitiesTimer;
 	/** @var TimingsHandler */
 	public static $tickEntityTimer;
 	/** @var TimingsHandler */
@@ -127,7 +126,6 @@ abstract class Timings{
 		self::$permissionDefaultTimer = new TimingsHandler("Default Permission Calculation");
 
 		self::$entityMoveTimer = new TimingsHandler("** entityMove");
-		self::$playerCheckNearEntitiesTimer = new TimingsHandler("** checkNearEntities");
 		self::$tickEntityTimer = new TimingsHandler("** tickEntity");
 		self::$tickTileEntityTimer = new TimingsHandler("** tickTileEntity");
 
@@ -148,8 +146,19 @@ abstract class Timings{
 	 *
 	 * @return TimingsHandler
 	 */
-	public static function getScheduledTaskTimings(TaskHandler $task, int $period) : TimingsHandler{
-		$name = "Task: " . ($task->getOwnerName() ?? "Unknown") . " Runnable: " . $task->getTaskName();
+	public static function getPluginTaskTimings(TaskHandler $task, int $period) : TimingsHandler{
+		$ftask = $task->getTask();
+		if($ftask instanceof PluginTask and $ftask->getOwner() !== null){
+			$plugin = $ftask->getOwner()->getDescription()->getFullName();
+		}elseif($task->timingName !== null){
+			$plugin = "Scheduler";
+		}else{
+			$plugin = "Unknown";
+		}
+
+		$taskname = $task->getTaskName();
+
+		$name = "Task: " . $plugin . " Runnable: " . $taskname;
 
 		if($period > 0){
 			$name .= "(interval:" . $period . ")";

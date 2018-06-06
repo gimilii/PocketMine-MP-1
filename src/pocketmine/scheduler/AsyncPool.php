@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace pocketmine\scheduler;
 
 use pocketmine\Server;
+use pocketmine\timings\Timings;
 
 class AsyncPool{
 
@@ -36,8 +37,6 @@ class AsyncPool{
 	private $tasks = [];
 	/** @var int[] */
 	private $taskWorkers = [];
-	/** @var int */
-	private $nextTaskId = 1;
 
 	/** @var AsyncWorker[] */
 	private $workers = [];
@@ -78,15 +77,13 @@ class AsyncPool{
 	}
 
 	public function submitTaskToWorker(AsyncTask $task, int $worker){
+		if(isset($this->tasks[$task->getTaskId()]) or $task->isGarbage()){
+			return;
+		}
+
 		if($worker < 0 or $worker >= $this->size){
 			throw new \InvalidArgumentException("Invalid worker $worker");
 		}
-		if($task->getTaskId() !== null){
-			throw new \InvalidArgumentException("Cannot submit the same AsyncTask instance more than once");
-		}
-
-		$task->progressUpdates = new \Threaded;
-		$task->setTaskId($this->nextTaskId++);
 
 		$this->tasks[$task->getTaskId()] = $task;
 
@@ -96,8 +93,8 @@ class AsyncPool{
 	}
 
 	public function submitTask(AsyncTask $task) : int{
-		if($task->getTaskId() !== null){
-			throw new \InvalidArgumentException("Cannot submit the same AsyncTask instance more than once");
+		if(isset($this->tasks[$task->getTaskId()]) or $task->isGarbage()){
+			return -1;
 		}
 
 		$selectedWorker = mt_rand(0, $this->size - 1);
@@ -126,15 +123,6 @@ class AsyncPool{
 	}
 
 	public function removeTasks(){
-		foreach($this->workers as $worker){
-			/** @var AsyncTask $task */
-			while(($task = $worker->unstack()) !== null){
-				//cancelRun() is not strictly necessary here, but it might be used to inform plugins of the task state
-				//(i.e. it never executed).
-				$task->cancelRun();
-				$this->removeTask($task, true);
-			}
-		}
 		do{
 			foreach($this->tasks as $task){
 				$task->cancelRun();
@@ -163,6 +151,8 @@ class AsyncPool{
 	}
 
 	public function collectTasks(){
+		Timings::$schedulerAsyncTimer->startTiming();
+
 		foreach($this->tasks as $task){
 			if(!$task->isGarbage()){
 				$task->checkProgressUpdates($this->server);
@@ -171,14 +161,14 @@ class AsyncPool{
 				if(!$task->hasCancelledRun()){
 					try{
 						$task->onCompletion($this->server);
-						if($task->removeDanglingStoredObjects()){
+						if(!$this->server->getScheduler()->removeLocalComplex($task)){
 							$this->server->getLogger()->notice("AsyncTask " . get_class($task) . " stored local complex data but did not remove them after completion");
 						}
 					}catch(\Throwable $e){
-						$this->server->getLogger()->critical("Could not execute completion of asynchronous task " . (new \ReflectionClass($task))->getShortName() . ": " . $e->getMessage());
+						$this->server->getLogger()->critical("Could not execute completion of asychronous task " . (new \ReflectionClass($task))->getShortName() . ": " . $e->getMessage());
 						$this->server->getLogger()->logException($e);
 
-						$task->removeDanglingStoredObjects(); //silent
+						$this->server->getScheduler()->removeLocalComplex($task); //silent
 					}
 				}
 
@@ -190,14 +180,7 @@ class AsyncPool{
 		}
 
 		$this->collectWorkers();
-	}
 
-	public function shutdown() : void{
-		$this->collectTasks();
-		$this->removeTasks();
-		foreach($this->workers as $worker){
-			$worker->quit();
-		}
-		$this->workers = [];
+		Timings::$schedulerAsyncTimer->stopTiming();
 	}
 }

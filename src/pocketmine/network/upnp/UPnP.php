@@ -30,28 +30,29 @@ use pocketmine\utils\Utils;
 
 abstract class UPnP{
 
-	public static function PortForward(int $port) : void{
+	public static function PortForward(int $port) : bool{
 		if(!Utils::$online){
-			throw new \RuntimeException("Server is offline");
+			return false;
 		}
-		if(Utils::getOS() !== "win"){
-			throw new \RuntimeException("UPnP is only supported on Windows");
-		}
-		if(!class_exists("COM")){
-			throw new \RuntimeException("UPnP requires the com_dotnet extension");
+		if(Utils::getOS() != "win" or !class_exists("COM")){
+			return false;
 		}
 
 		$myLocalIP = gethostbyname(trim(`hostname`));
-
-		/** @noinspection PhpUndefinedClassInspection */
-		$com = new \COM("HNetCfg.NATUPnP");
-		/** @noinspection PhpUndefinedFieldInspection */
-		if($com === false or !is_object($com->StaticPortMappingCollection)){
-			throw new \RuntimeException("Failed to portforward (unsupported?)");
+		try{
+			/** @noinspection PhpUndefinedClassInspection */
+			$com = new \COM("HNetCfg.NATUPnP");
+			/** @noinspection PhpUndefinedFieldInspection */
+			if($com === false or !is_object($com->StaticPortMappingCollection)){
+				return false;
+			}
+			/** @noinspection PhpUndefinedFieldInspection */
+			$com->StaticPortMappingCollection->Add($port, "UDP", $port, $myLocalIP, true, "PocketMine-MP");
+		}catch(\Throwable $e){
+			return false;
 		}
 
-		/** @noinspection PhpUndefinedFieldInspection */
-		$com->StaticPortMappingCollection->Add($port, "UDP", $port, $myLocalIP, true, "PocketMine-MP");
+		return true;
 	}
 
 	public static function RemovePortForward(int $port) : bool{
@@ -64,7 +65,7 @@ abstract class UPnP{
 
 		try{
 			/** @noinspection PhpUndefinedClassInspection */
-			$com = new \COM("HNetCfg.NATUPnP");
+			$com = new \COM("HNetCfg.NATUPnP") or false;
 			/** @noinspection PhpUndefinedFieldInspection */
 			if($com === false or !is_object($com->StaticPortMappingCollection)){
 				return false;

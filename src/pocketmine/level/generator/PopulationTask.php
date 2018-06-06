@@ -84,6 +84,11 @@ class PopulationTask extends AsyncTask{
 			}
 		}
 
+		if($chunk === null){
+			//TODO error
+			return;
+		}
+
 		$manager->setChunk($chunk->getX(), $chunk->getZ(), $chunk);
 		if(!$chunk->isGenerated()){
 			$generator->generateChunk($chunk->getX(), $chunk->getZ());
@@ -144,6 +149,11 @@ class PopulationTask extends AsyncTask{
 			}
 
 			$chunk = Chunk::fastDeserialize($this->chunk);
+
+			if($chunk === null){
+				//TODO error
+				return;
+			}
 
 			for($i = 0; $i < 9; ++$i){
 				if($i === 4){

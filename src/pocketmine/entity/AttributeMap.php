@@ -27,7 +27,7 @@ class AttributeMap implements \ArrayAccess{
 	/** @var Attribute[] */
 	private $attributes = [];
 
-	public function addAttribute(Attribute $attribute) : void{
+	public function addAttribute(Attribute $attribute){
 		$this->attributes[$attribute->getId()] = $attribute;
 	}
 
@@ -36,7 +36,7 @@ class AttributeMap implements \ArrayAccess{
 	 *
 	 * @return Attribute|null
 	 */
-	public function getAttribute(int $id) : ?Attribute{
+	public function getAttribute(int $id){
 		return $this->attributes[$id] ?? null;
 	}
 
@@ -56,28 +56,19 @@ class AttributeMap implements \ArrayAccess{
 		});
 	}
 
-	public function offsetExists($offset) : bool{
+	public function offsetExists($offset){
 		return isset($this->attributes[$offset]);
 	}
 
-	/**
-	 * @param int $offset
-	 *
-	 * @return float
-	 */
-	public function offsetGet($offset) : float{
+	public function offsetGet($offset){
 		return $this->attributes[$offset]->getValue();
 	}
 
-	/**
-	 * @param int   $offset
-	 * @param float $value
-	 */
-	public function offsetSet($offset, $value) : void{
+	public function offsetSet($offset, $value){
 		$this->attributes[$offset]->setValue($value);
 	}
 
-	public function offsetUnset($offset) : void{
+	public function offsetUnset($offset){
 		throw new \RuntimeException("Could not unset an attribute from an attribute map");
 	}
 }

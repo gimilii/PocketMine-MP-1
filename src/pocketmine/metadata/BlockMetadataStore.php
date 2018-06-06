@@ -23,7 +23,7 @@ declare(strict_types=1);
 
 namespace pocketmine\metadata;
 
-use pocketmine\block\Block;
+use pocketmine\Block\Block;
 use pocketmine\level\Level;
 use pocketmine\plugin\Plugin;
 

@@ -25,12 +25,13 @@ namespace pocketmine\block;
 
 use pocketmine\item\Item;
 use pocketmine\level\Position;
-use pocketmine\utils\MainLogger;
 
 /**
  * Manages block registration and instance creation
  */
 class BlockFactory{
+	/** @var \SplFixedArray<Block> */
+	private static $list = null;
 	/** @var \SplFixedArray<Block> */
 	private static $fullList = null;
 
@@ -49,20 +50,12 @@ class BlockFactory{
 	/** @var \SplFixedArray<float> */
 	public static $blastResistance = null;
 
-	/** @var int[] */
-	public static $staticRuntimeIdMap = [];
-
-	/** @var int[] */
-	public static $legacyIdMap = [];
-
-	/** @var int */
-	private static $lastRuntimeId = 0;
-
 	/**
 	 * Initializes the block factory. By default this is called only once on server start, however you may wish to use
 	 * this if you need to reset the block factory back to its original defaults for whatever reason.
 	 */
 	public static function init() : void{
+		self::$list = new \SplFixedArray(256);
 		self::$fullList = new \SplFixedArray(4096);
 
 		self::$light = new \SplFixedArray(256);
@@ -324,8 +317,8 @@ class BlockFactory{
 
 		//TODO: RESERVED6
 
-		for($id = 0, $size = self::$fullList->getSize() >> 4; $id < $size; ++$id){
-			if(self::$fullList[$id << 4] === null){
+		foreach(self::$list as $id => $block){
+			if($block === null){
 				self::registerBlock(new UnknownBlock($id));
 			}
 		}
@@ -351,6 +344,8 @@ class BlockFactory{
 			throw new \RuntimeException("Trying to overwrite an already registered block");
 		}
 
+		self::$list[$id] = clone $block;
+
 		for($meta = 0; $meta < 16; ++$meta){
 			$variant = clone $block;
 			$variant->setDamage($meta);
@@ -361,7 +356,7 @@ class BlockFactory{
 		self::$transparent[$id] = $block->isTransparent();
 		self::$hardness[$id] = $block->getHardness();
 		self::$light[$id] = $block->getLightLevel();
-		self::$lightFilter[$id] = min(15, $block->getLightFilter() + 1); //opacity plus 1 standard light filter
+		self::$lightFilter[$id] = $block->getLightFilter() + 1; //opacity plus 1 standard light filter
 		self::$diffusesSkyLight[$id] = $block->diffusesSkyLight();
 		self::$blastResistance[$id] = $block->getBlastResistance();
 	}
@@ -415,57 +410,7 @@ class BlockFactory{
 	 * @return bool
 	 */
 	public static function isRegistered(int $id) : bool{
-		$b = self::$fullList[$id << 4];
+		$b = self::$list[$id];
 		return $b !== null and !($b instanceof UnknownBlock);
-	}
-
-	public static function registerStaticRuntimeIdMappings() : void{
-		/** @var mixed[] $runtimeIdMap */
-		$runtimeIdMap = json_decode(file_get_contents(\pocketmine\RESOURCE_PATH . "runtimeid_table.json"), true);
-		foreach($runtimeIdMap as $obj){
-			self::registerMapping($obj["runtimeID"], $obj["id"], $obj["data"]);
-		}
-	}
-
-	/**
-	 * @internal
-	 *
-	 * @param int $id
-	 * @param int $meta
-	 *
-	 * @return int
-	 */
-	public static function toStaticRuntimeId(int $id, int $meta = 0) : int{
-		if($id === Block::AIR){
-			//TODO: HACK! (weird air blocks with non-zero damage values shouldn't turn into update! blocks)
-			$meta = 0;
-		}
-
-		$index = ($id << 4) | $meta;
-		if(!isset(self::$staticRuntimeIdMap[$index])){
-			self::registerMapping($rtId = ++self::$lastRuntimeId, $id, $meta);
-			MainLogger::getLogger()->error("ID $id meta $meta does not have a corresponding block static runtime ID, added a new unknown runtime ID ($rtId)");
-			return $rtId;
-		}
-
-		return self::$staticRuntimeIdMap[$index];
-	}
-
-	/**
-	 * @internal
-	 *
-	 * @param int $runtimeId
-	 *
-	 * @return int[] [id, meta]
-	 */
-	public static function fromStaticRuntimeId(int $runtimeId) : array{
-		$v = self::$legacyIdMap[$runtimeId];
-		return [$v >> 4, $v & 0xf];
-	}
-
-	private static function registerMapping(int $staticRuntimeId, int $legacyId, int $legacyMeta) : void{
-		self::$staticRuntimeIdMap[($legacyId << 4) | $legacyMeta] = $staticRuntimeId;
-		self::$legacyIdMap[$staticRuntimeId] = ($legacyId << 4) | $legacyMeta;
-		self::$lastRuntimeId = max(self::$lastRuntimeId, $staticRuntimeId);
 	}
 }

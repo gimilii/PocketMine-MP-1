@@ -51,7 +51,7 @@ class Attribute{
 	/** @var Attribute[] */
 	protected static $attributes = [];
 
-	public static function init() : void{
+	public static function init(){
 		self::addAttribute(self::ABSORPTION, "minecraft:absorption", 0.00, 340282346638528859811704183484516925440.00, 0.00);
 		self::addAttribute(self::SATURATION, "minecraft:player.saturation", 0.00, 20.00, 20.00);
 		self::addAttribute(self::EXHAUSTION, "minecraft:player.exhaustion", 0.00, 5.00, 0.0);
@@ -92,7 +92,7 @@ class Attribute{
 	 *
 	 * @return Attribute|null
 	 */
-	public static function getAttribute(int $id) : ?Attribute{
+	public static function getAttribute(int $id){
 		return isset(self::$attributes[$id]) ? clone self::$attributes[$id] : null;
 	}
 
@@ -101,7 +101,7 @@ class Attribute{
 	 *
 	 * @return Attribute|null
 	 */
-	public static function getAttributeByName(string $name) : ?Attribute{
+	public static function getAttributeByName(string $name){
 		foreach(self::$attributes as $a){
 			if($a->getName() === $name){
 				return clone $a;
@@ -170,7 +170,7 @@ class Attribute{
 		return $this;
 	}
 
-	public function resetToDefault() : void{
+	public function resetToDefault(){
 		$this->setValue($this->getDefaultValue());
 	}
 
@@ -219,7 +219,7 @@ class Attribute{
 		return $this->shouldSend and $this->desynchronized;
 	}
 
-	public function markSynchronized(bool $synced = true) : void{
+	public function markSynchronized(bool $synced = true){
 		$this->desynchronized = !$synced;
 	}
 }

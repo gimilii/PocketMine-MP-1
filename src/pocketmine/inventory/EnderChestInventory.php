@@ -23,6 +23,7 @@ declare(strict_types=1);
 
 namespace pocketmine\inventory;
 
+use pocketmine\entity\Human;
 use pocketmine\level\Position;
 use pocketmine\network\mcpe\protocol\types\WindowTypes;
 use pocketmine\tile\EnderChest;
@@ -32,7 +33,7 @@ class EnderChestInventory extends ChestInventory{
 	/** @var Position */
 	protected $holder;
 
-	public function __construct(){
+	public function __construct(Human $owner){
 		ContainerInventory::__construct(new Position());
 	}
 

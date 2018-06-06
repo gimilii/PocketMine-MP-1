@@ -80,18 +80,19 @@ class EffectCommand extends VanillaCommand{
 		$amplification = 0;
 
 		if(count($args) >= 3){
-			if(($d = $this->getBoundedInt($sender, $args[2], 0, INT32_MAX)) === null){
-				return false;
-			}
-			$duration = $d * 20; //ticks
+			$duration = ((int) $args[2]) * 20; //ticks
 		}else{
 			$duration = null;
 		}
 
 		if(count($args) >= 4){
-			$amplification = $this->getBoundedInt($sender, $args[3], 0, 255);
-			if($amplification === null){
-				return false;
+			$amplification = (int) $args[3];
+			if($amplification > 255){
+				$sender->sendMessage(new TranslationContainer(TextFormat::RED . "%commands.generic.num.tooBig", [(string) $args[3], "255"]));
+				return true;
+			}elseif($amplification < 0){
+				$sender->sendMessage(new TranslationContainer(TextFormat::RED . "%commands.generic.num.tooSmall", [(string) $args[3], "0"]));
+				return true;
 			}
 		}
 

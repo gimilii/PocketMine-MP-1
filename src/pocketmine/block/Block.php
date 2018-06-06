@@ -30,6 +30,7 @@ use pocketmine\entity\Entity;
 use pocketmine\item\enchantment\Enchantment;
 use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
+use pocketmine\level\Level;
 use pocketmine\level\Position;
 use pocketmine\math\AxisAlignedBB;
 use pocketmine\math\RayTraceResult;
@@ -472,30 +473,6 @@ class Block extends Position implements BlockIds, Metadatable{
 	}
 
 	/**
-	 * Returns how much XP will be dropped by breaking this block with the given item.
-	 *
-	 * @param Item $item
-	 *
-	 * @return int
-	 */
-	public function getXpDropForTool(Item $item) : int{
-		if($item->hasEnchantment(Enchantment::SILK_TOUCH) or !$this->isCompatibleWithTool($item)){
-			return 0;
-		}
-
-		return $this->getXpDropAmount();
-	}
-
-	/**
-	 * Returns how much XP this block will drop when broken with an appropriate tool.
-	 *
-	 * @return int
-	 */
-	protected function getXpDropAmount() : int{
-		return 0;
-	}
-
-	/**
 	 * Returns whether Silk Touch enchanted tools will cause this block to drop as itself. Since most blocks drop
 	 * themselves anyway, this is implicitly true.
 	 *
@@ -519,50 +496,6 @@ class Block extends Position implements BlockIds, Metadatable{
 	 */
 	public function getFuelTime() : int{
 		return 0;
-	}
-
-	/**
-	 * Returns the chance that the block will catch fire from nearby fire sources. Higher values lead to faster catching
-	 * fire.
-	 *
-	 * @return int
-	 */
-	public function getFlameEncouragement() : int{
-		return 0;
-	}
-
-	/**
-	 * Returns the base flammability of this block. Higher values lead to the block burning away more quickly.
-	 *
-	 * @return int
-	 */
-	public function getFlammability() : int{
-		return 0;
-	}
-
-	/**
-	 * Returns whether fire lit on this block will burn indefinitely.
-	 *
-	 * @return bool
-	 */
-	public function burnsForever() : bool{
-		return false;
-	}
-
-	/**
-	 * Returns whether this block can catch fire.
-	 *
-	 * @return bool
-	 */
-	public function isFlammable() : bool{
-		return $this->getFlammability() > 0;
-	}
-
-	/**
-	 * Called when this block is burned away by being on fire.
-	 */
-	public function onIncinerate() : void{
-
 	}
 
 	/**

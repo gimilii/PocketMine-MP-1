@@ -42,9 +42,6 @@ class MainLogger extends \AttachableThreadedLogger{
 	/** @var bool */
 	private $syncFlush = false;
 
-	/** @var string */
-	private $format = TextFormat::AQUA . "[%s] " . TextFormat::RESET . "%s[%s/%s]: %s" . TextFormat::RESET;
-
 	/**
 	 * @param string $logFile
 	 * @param bool $logDebug
@@ -60,7 +57,7 @@ class MainLogger extends \AttachableThreadedLogger{
 		$this->logFile = $logFile;
 		$this->logDebug = $logDebug;
 		$this->logStream = new \Threaded;
-		$this->start(PTHREADS_INHERIT_NONE);
+		$this->start();
 	}
 
 	/**
@@ -217,13 +214,13 @@ class MainLogger extends \AttachableThreadedLogger{
 			$threadName = (new \ReflectionClass($thread))->getShortName() . " thread";
 		}
 
-		$message = sprintf($this->format, date("H:i:s", $now), $color, $threadName, $prefix, $message);
+		$message = Terminal::toANSI(TextFormat::AQUA . "[" . date("H:i:s", $now) . "] " . TextFormat::RESET . $color . "[" . $threadName . "/" . $prefix . "]:" . " " . $message . TextFormat::RESET);
 		$cleanMessage = TextFormat::clean($message);
 
-		if(Terminal::hasFormattingCodes()){
-			echo Terminal::toANSI($message) . PHP_EOL;
-		}else{
+		if(!Terminal::hasFormattingCodes()){
 			echo $cleanMessage . PHP_EOL;
+		}else{
+			echo $message . PHP_EOL;
 		}
 
 		foreach($this->attachments as $attachment){

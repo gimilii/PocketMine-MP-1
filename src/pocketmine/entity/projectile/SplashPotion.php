@@ -42,13 +42,13 @@ class SplashPotion extends Throwable{
 	protected $gravity = 0.05;
 	protected $drag = 0.01;
 
-	protected function initEntity() : void{
+	protected function initEntity(){
 		parent::initEntity();
 
 		$this->setPotionId($this->namedtag->getShort("PotionId", 0));
 	}
 
-	public function saveNBT() : void{
+	public function saveNBT(){
 		parent::saveNBT();
 		$this->namedtag->setShort("PotionId", $this->getPotionId());
 	}

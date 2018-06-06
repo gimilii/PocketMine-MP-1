@@ -24,7 +24,6 @@ declare(strict_types=1);
 /**
  * Permission related classes
  */
-
 namespace pocketmine\permission;
 
 use pocketmine\Server;
@@ -85,7 +84,7 @@ class Permission{
 	private $description;
 
 	/**
-	 * @var bool[]
+	 * @var string[]
 	 */
 	private $children;
 
@@ -95,10 +94,10 @@ class Permission{
 	/**
 	 * Creates a new Permission object to be attached to Permissible objects
 	 *
-	 * @param string $name
-	 * @param string $description
-	 * @param string $defaultValue
-	 * @param bool[] $children
+	 * @param string       $name
+	 * @param string       $description
+	 * @param string       $defaultValue
+	 * @param Permission[] $children
 	 */
 	public function __construct(string $name, string $description = null, string $defaultValue = null, array $children = []){
 		$this->name = $name;
@@ -117,7 +116,7 @@ class Permission{
 	}
 
 	/**
-	 * @return bool[]
+	 * @return string[]
 	 */
 	public function &getChildren() : array{
 		return $this->children;
@@ -174,7 +173,7 @@ class Permission{
 
 	/**
 	 * @param string|Permission $name
-	 * @param bool              $value
+	 * @param                   $value
 	 *
 	 * @return Permission|null Permission if $name is a string, null if it's a Permission
 	 */

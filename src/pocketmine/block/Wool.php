@@ -54,12 +54,4 @@ class Wool extends Solid{
 
 		return $time;
 	}
-
-	public function getFlameEncouragement() : int{
-		return 30;
-	}
-
-	public function getFlammability() : int{
-		return 60;
-	}
 }

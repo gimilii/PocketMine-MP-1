@@ -24,7 +24,6 @@ declare(strict_types=1);
 namespace pocketmine\block;
 
 use pocketmine\entity\Entity;
-use pocketmine\item\FlintSteel;
 use pocketmine\item\Item;
 use pocketmine\math\Vector3;
 use pocketmine\Player;
@@ -47,8 +46,8 @@ class TNT extends Solid{
 	}
 
 	public function onActivate(Item $item, Player $player = null) : bool{
-		if($item instanceof FlintSteel){
-			$item->applyDamage(1);
+		if($item->getId() === Item::FLINT_STEEL){
+			$item->useOn($this);
 			$this->ignite();
 			return true;
 		}
@@ -68,17 +67,5 @@ class TNT extends Solid{
 		if($tnt !== null){
 			$tnt->spawnToAll();
 		}
-	}
-
-	public function getFlameEncouragement() : int{
-		return 15;
-	}
-
-	public function getFlammability() : int{
-		return 100;
-	}
-
-	public function onIncinerate() : void{
-		$this->ignite();
 	}
 }

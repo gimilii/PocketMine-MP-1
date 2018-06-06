@@ -25,22 +25,26 @@ namespace pocketmine\tile;
 
 use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
+use pocketmine\level\Level;
+use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\CompoundTag;
+use pocketmine\nbt\tag\IntTag;
+use pocketmine\nbt\tag\ShortTag;
+use pocketmine\Player;
 
 class FlowerPot extends Spawnable{
 	public const TAG_ITEM = "item";
 	public const TAG_ITEM_DATA = "mData";
 
-	/** @var Item */
-	private $item;
-
-	protected function readSaveData(CompoundTag $nbt) : void{
-		$this->item = ItemFactory::get($nbt->getShort(self::TAG_ITEM, 0, true), $nbt->getInt(self::TAG_ITEM_DATA, 0, true), 1);
-	}
-
-	protected function writeSaveData(CompoundTag $nbt) : void{
-		$nbt->setShort(self::TAG_ITEM, $this->item->getId());
-		$nbt->setInt(self::TAG_ITEM_DATA, $this->item->getDamage());
+	public function __construct(Level $level, CompoundTag $nbt){
+		//TODO: check PC format
+		if(!$nbt->hasTag(self::TAG_ITEM, ShortTag::class)){
+			$nbt->setShort(self::TAG_ITEM, 0, true);
+		}
+		if(!$nbt->hasTag(self::TAG_ITEM_DATA, IntTag::class)){
+			$nbt->setInt(self::TAG_ITEM_DATA, 0, true);
+		}
+		parent::__construct($level, $nbt);
 	}
 
 	public function canAddItem(Item $item) : bool{
@@ -67,11 +71,12 @@ class FlowerPot extends Spawnable{
 	}
 
 	public function getItem() : Item{
-		return clone $this->item;
+		return ItemFactory::get($this->namedtag->getShort(self::TAG_ITEM), $this->namedtag->getInt(self::TAG_ITEM_DATA), 1);
 	}
 
 	public function setItem(Item $item){
-		$this->item = clone $item;
+		$this->namedtag->setShort(self::TAG_ITEM, $item->getId());
+		$this->namedtag->setInt(self::TAG_ITEM_DATA, $item->getDamage());
 		$this->onChanged();
 	}
 
@@ -83,8 +88,13 @@ class FlowerPot extends Spawnable{
 		return $this->getItem()->isNull();
 	}
 
-	protected function addAdditionalSpawnData(CompoundTag $nbt) : void{
-		$nbt->setShort(self::TAG_ITEM, $this->item->getId());
-		$nbt->setInt(self::TAG_ITEM_DATA, $this->item->getDamage());
+	public function addAdditionalSpawnData(CompoundTag $nbt) : void{
+		$nbt->setTag($this->namedtag->getTag(self::TAG_ITEM));
+		$nbt->setTag($this->namedtag->getTag(self::TAG_ITEM_DATA));
+	}
+
+	protected static function createAdditionalNBT(CompoundTag $nbt, Vector3 $pos, ?int $face = null, ?Item $item = null, ?Player $player = null) : void{
+		$nbt->setShort(self::TAG_ITEM, 0);
+		$nbt->setInt(self::TAG_ITEM_DATA, 0);
 	}
 }

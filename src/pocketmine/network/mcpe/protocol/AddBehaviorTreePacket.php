@@ -31,14 +31,14 @@ class AddBehaviorTreePacket extends DataPacket{
 	public const NETWORK_ID = ProtocolInfo::ADD_BEHAVIOR_TREE_PACKET;
 
 	/** @var string */
-	public $behaviorTreeJson;
+	public $unknownString1;
 
 	protected function decodePayload(){
-		$this->behaviorTreeJson = $this->getString();
+		$this->unknownString1 = $this->getString();
 	}
 
 	protected function encodePayload(){
-		$this->putString($this->behaviorTreeJson);
+		$this->putString($this->unknownString1);
 	}
 
 	public function handle(NetworkSession $session) : bool{

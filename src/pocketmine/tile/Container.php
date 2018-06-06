@@ -27,7 +27,6 @@ use pocketmine\inventory\Inventory;
 
 interface Container{
 	public const TAG_ITEMS = "Items";
-	public const TAG_LOCK = "Lock";
 
 	/**
 	 * @return Inventory
@@ -38,13 +37,4 @@ interface Container{
 	 * @return Inventory
 	 */
 	public function getRealInventory();
-
-	/**
-	 * Returns whether this container can be opened by an item with the given custom name.
-	 *
-	 * @param string $key
-	 *
-	 * @return bool
-	 */
-	public function canOpenWith(string $key) : bool;
 }

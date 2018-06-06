@@ -42,7 +42,7 @@ class Squid extends WaterAnimal{
 
 	private $switchDirectionTicker = 0;
 
-	public function initEntity() : void{
+	public function initEntity(){
 		$this->setMaxHealth(10);
 		parent::initEntity();
 	}
@@ -51,7 +51,7 @@ class Squid extends WaterAnimal{
 		return "Squid";
 	}
 
-	public function attack(EntityDamageEvent $source) : void{
+	public function attack(EntityDamageEvent $source){
 		parent::attack($source);
 		if($source->isCancelled()){
 			return;
@@ -93,28 +93,30 @@ class Squid extends WaterAnimal{
 				$this->swimDirection->y = -0.5;
 			}
 
-			$inWater = $this->isUnderwater();
+			$inWater = $this->isInsideOfWater();
 			if(!$inWater){
 				$this->swimDirection = null;
 			}elseif($this->swimDirection !== null){
-				if($this->motion->lengthSquared() <= $this->swimDirection->lengthSquared()){
-					$this->motion = $this->swimDirection->multiply($this->swimSpeed);
+				if($this->motionX ** 2 + $this->motionY ** 2 + $this->motionZ ** 2 <= $this->swimDirection->lengthSquared()){
+					$this->motionX = $this->swimDirection->x * $this->swimSpeed;
+					$this->motionY = $this->swimDirection->y * $this->swimSpeed;
+					$this->motionZ = $this->swimDirection->z * $this->swimSpeed;
 				}
 			}else{
 				$this->swimDirection = $this->generateRandomDirection();
 				$this->swimSpeed = mt_rand(50, 100) / 2000;
 			}
 
-			$f = sqrt(($this->motion->x ** 2) + ($this->motion->z ** 2));
-			$this->yaw = (-atan2($this->motion->x, $this->motion->z) * 180 / M_PI);
-			$this->pitch = (-atan2($f, $this->motion->y) * 180 / M_PI);
+			$f = sqrt(($this->motionX ** 2) + ($this->motionZ ** 2));
+			$this->yaw = (-atan2($this->motionX, $this->motionZ) * 180 / M_PI);
+			$this->pitch = (-atan2($f, $this->motionY) * 180 / M_PI);
 		}
 
 		return $hasUpdate;
 	}
 
-	protected function applyGravity() : void{
-		if(!$this->isUnderwater()){
+	protected function applyGravity(){
+		if(!$this->isInsideOfWater()){
 			parent::applyGravity();
 		}
 	}

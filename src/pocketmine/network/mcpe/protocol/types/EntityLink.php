@@ -25,10 +25,6 @@ namespace pocketmine\network\mcpe\protocol\types;
 
 class EntityLink{
 
-	public const TYPE_REMOVE = 0;
-	public const TYPE_RIDER = 1;
-	public const TYPE_PASSENGER = 2;
-
 	/** @var int */
 	public $fromEntityUniqueId;
 	/** @var int */
@@ -36,12 +32,12 @@ class EntityLink{
 	/** @var int */
 	public $type;
 	/** @var bool */
-	public $immediate; //for dismounting on mount death
+	public $bool1;
 
-	public function __construct(int $fromEntityUniqueId = null, int $toEntityUniqueId = null, int $type = null, bool $immediate = false){
+	public function __construct(int $fromEntityUniqueId = null, int $toEntityUniqueId = null, int $type = null, bool $bool1 = null){
 		$this->fromEntityUniqueId = $fromEntityUniqueId;
 		$this->toEntityUniqueId = $toEntityUniqueId;
 		$this->type = $type;
-		$this->immediate = $immediate;
+		$this->bool1 = $bool1;
 	}
 }

@@ -23,7 +23,6 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
-use pocketmine\item\Hoe;
 use pocketmine\item\Item;
 use pocketmine\Player;
 
@@ -51,8 +50,8 @@ class Dirt extends Solid{
 	}
 
 	public function onActivate(Item $item, Player $player = null) : bool{
-		if($item instanceof Hoe){
-			$item->applyDamage(1);
+		if($item->isHoe()){
+			$item->useOn($this);
 			if($this->meta === 1){
 				$this->getLevel()->setBlock($this, BlockFactory::get(Block::DIRT), true);
 			}else{

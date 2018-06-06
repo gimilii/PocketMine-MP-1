@@ -36,18 +36,18 @@ class EntityFallPacket extends DataPacket{
 	/** @var float */
 	public $fallDistance;
 	/** @var bool */
-	public $isInVoid;
+	public $bool1;
 
 	protected function decodePayload(){
 		$this->entityRuntimeId = $this->getEntityRuntimeId();
 		$this->fallDistance = $this->getLFloat();
-		$this->isInVoid = $this->getBool();
+		$this->bool1 = $this->getBool();
 	}
 
 	protected function encodePayload(){
 		$this->putEntityRuntimeId($this->entityRuntimeId);
 		$this->putLFloat($this->fallDistance);
-		$this->putBool($this->isInVoid);
+		$this->putBool($this->bool1);
 	}
 
 	public function handle(NetworkSession $session) : bool{

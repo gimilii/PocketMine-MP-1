@@ -201,9 +201,7 @@ class PlayerNetworkSessionAdapter extends NetworkSession{
 	}
 
 	public function handleRequestChunkRadius(RequestChunkRadiusPacket $packet) : bool{
-		$this->player->setViewDistance($packet->radius);
-
-		return true;
+		return $this->player->handleRequestChunkRadius($packet);
 	}
 
 	public function handleItemFrameDropItem(ItemFrameDropItemPacket $packet) : bool{

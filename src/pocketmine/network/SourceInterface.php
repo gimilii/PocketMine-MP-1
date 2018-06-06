@@ -65,9 +65,9 @@ interface SourceInterface{
 	public function setName(string $name);
 
 	/**
-	 * Called every tick to process events on the interface.
+	 * @return bool
 	 */
-	public function process() : void;
+	public function process() : bool;
 
 	public function shutdown();
 

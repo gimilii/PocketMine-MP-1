@@ -23,6 +23,8 @@ declare(strict_types=1);
 
 namespace pocketmine\network\mcpe\protocol\types;
 
+use pocketmine\inventory\transaction\action\CraftingTakeResultAction;
+use pocketmine\inventory\transaction\action\CraftingTransferMaterialAction;
 use pocketmine\inventory\transaction\action\CreativeInventoryAction;
 use pocketmine\inventory\transaction\action\DropItemAction;
 use pocketmine\inventory\transaction\action\InventoryAction;
@@ -82,7 +84,7 @@ class NetworkInventoryAction{
 	/** @var int */
 	public $windowId = ContainerIds::NONE;
 	/** @var int */
-	public $sourceFlags = 0;
+	public $unknown = 0;
 	/** @var int */
 	public $inventorySlot;
 	/** @var Item */
@@ -102,17 +104,15 @@ class NetworkInventoryAction{
 				$this->windowId = $packet->getVarInt();
 				break;
 			case self::SOURCE_WORLD:
-				$this->sourceFlags = $packet->getUnsignedVarInt();
+				$this->unknown = $packet->getUnsignedVarInt();
 				break;
 			case self::SOURCE_CREATIVE:
 				break;
 			case self::SOURCE_TODO:
 				$this->windowId = $packet->getVarInt();
 				switch($this->windowId){
-					/** @noinspection PhpMissingBreakStatementInspection */
-					case self::SOURCE_TYPE_CRAFTING_RESULT:
-						$packet->isFinalCraftingPart = true;
 					case self::SOURCE_TYPE_CRAFTING_USE_INGREDIENT:
+					case self::SOURCE_TYPE_CRAFTING_RESULT:
 						$packet->isCraftingPart = true;
 						break;
 				}
@@ -137,7 +137,7 @@ class NetworkInventoryAction{
 				$packet->putVarInt($this->windowId);
 				break;
 			case self::SOURCE_WORLD:
-				$packet->putUnsignedVarInt($this->sourceFlags);
+				$packet->putUnsignedVarInt($this->unknown);
 				break;
 			case self::SOURCE_CREATIVE:
 				break;
@@ -170,7 +170,7 @@ class NetworkInventoryAction{
 					throw new \UnexpectedValueException("Only expecting drop-item world actions from the client!");
 				}
 
-				return new DropItemAction($this->newItem);
+				return new DropItemAction($this->oldItem, $this->newItem);
 			case self::SOURCE_CREATIVE:
 				switch($this->inventorySlot){
 					case self::ACTION_MAGIC_SLOT_CREATIVE_DELETE_ITEM:
@@ -193,8 +193,9 @@ class NetworkInventoryAction{
 						$window = $player->getCraftingGrid();
 						return new SlotChangeAction($window, $this->inventorySlot, $this->oldItem, $this->newItem);
 					case self::SOURCE_TYPE_CRAFTING_RESULT:
+						return new CraftingTakeResultAction($this->oldItem, $this->newItem);
 					case self::SOURCE_TYPE_CRAFTING_USE_INGREDIENT:
-						return null;
+						return new CraftingTransferMaterialAction($this->oldItem, $this->newItem, $this->inventorySlot);
 
 					case self::SOURCE_TYPE_CONTAINER_DROP_CONTENTS:
 						//TODO: this type applies to all fake windows, not just crafting

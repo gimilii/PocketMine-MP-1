@@ -25,58 +25,67 @@ namespace pocketmine\inventory;
 
 use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
+use pocketmine\utils\UUID;
 
 class ShapedRecipe implements CraftingRecipe{
+	/** @var Item */
+	private $primaryResult;
+	/** @var Item[] */
+	private $extraResults = [];
+
+	/** @var UUID|null */
+	private $id = null;
+
 	/** @var string[] */
 	private $shape = [];
 	/** @var Item[] char => Item map */
 	private $ingredientList = [];
-	/** @var Item[] */
-	private $results = [];
-
-	/** @var int */
-	private $height;
-	/** @var int */
-	private $width;
 
 	/**
 	 * Constructs a ShapedRecipe instance.
 	 *
-	 * @param string[] $shape <br>
+	 * @param Item     $primaryResult
+	 * @param string[] $shape<br>
 	 *     Array of 1, 2, or 3 strings representing the rows of the recipe.
 	 *     This accepts an array of 1, 2 or 3 strings. Each string should be of the same length and must be at most 3
 	 *     characters long. Each character represents a unique type of ingredient. Spaces are interpreted as air.
-	 * @param Item[] $ingredients <br>
+	 * @param Item[]   $ingredients<br>
 	 *     Char => Item map of items to be set into the shape.
 	 *     This accepts an array of Items, indexed by character. Every unique character (except space) in the shape
 	 *     array MUST have a corresponding item in this list. Space character is automatically treated as air.
-	 * @param Item[] $results List of items that this recipe produces when crafted.
+	 * @param Item[]   $extraResults<br>
+	 *     List of additional result items to leave in the crafting grid afterwards. Used for things like cake recipe
+	 *     empty buckets.
 	 *
 	 * Note: Recipes **do not** need to be square. Do NOT add padding for empty rows/columns.
 	 */
-	public function __construct(array $shape, array $ingredients, array $results){
-		$this->height = count($shape);
-		if($this->height > 3 or $this->height <= 0){
-			throw new \InvalidArgumentException("Shaped recipes may only have 1, 2 or 3 rows, not $this->height");
+	public function __construct(Item $primaryResult, array $shape, array $ingredients, array $extraResults = []){
+		$rowCount = count($shape);
+		if($rowCount > 3 or $rowCount <= 0){
+			throw new \InvalidArgumentException("Shaped recipes may only have 1, 2 or 3 rows, not $rowCount");
 		}
 
 		$shape = array_values($shape);
 
-		$this->width = strlen($shape[0]);
-		if($this->width > 3 or $this->width <= 0){
-			throw new \InvalidArgumentException("Shaped recipes may only have 1, 2 or 3 columns, not $this->width");
+		$columnCount = strlen($shape[0]);
+		if($columnCount > 3 or $rowCount <= 0){
+			throw new \InvalidArgumentException("Shaped recipes may only have 1, 2 or 3 columns, not $columnCount");
 		}
 
 		foreach($shape as $y => $row){
-			if(strlen($row) !== $this->width){
-				throw new \InvalidArgumentException("Shaped recipe rows must all have the same length (expected $this->width, got " . strlen($row) . ")");
+			if(strlen($row) !== $columnCount){
+				throw new \InvalidArgumentException("Shaped recipe rows must all have the same length (expected $columnCount, got " . strlen($row) . ")");
 			}
 
-			for($x = 0; $x < $this->width; ++$x){
+			for($x = 0; $x < $columnCount; ++$x){
 				if($row{$x} !== ' ' and !isset($ingredients[$row{$x}])){
 					throw new \InvalidArgumentException("No item specified for symbol '" . $row{$x} . "'");
 				}
 			}
+		}
+		$this->primaryResult = clone $primaryResult;
+		foreach($extraResults as $item){
+			$this->extraResults[] = clone $item;
 		}
 
 		$this->shape = $shape;
@@ -84,32 +93,52 @@ class ShapedRecipe implements CraftingRecipe{
 		foreach($ingredients as $char => $i){
 			$this->setIngredient($char, $i);
 		}
-
-		$this->results = array_map(function(Item $item) : Item{ return clone $item; }, $results);
 	}
 
 	public function getWidth() : int{
-		return $this->width;
+		return strlen($this->shape[0]);
 	}
 
 	public function getHeight() : int{
-		return $this->height;
+		return count($this->shape);
+	}
+
+	/**
+	 * @return Item
+	 */
+	public function getResult() : Item{
+		return $this->primaryResult;
 	}
 
 	/**
 	 * @return Item[]
 	 */
-	public function getResults() : array{
-		return array_map(function(Item $item) : Item{ return clone $item; }, $this->results);
+	public function getExtraResults() : array{
+		return $this->extraResults;
 	}
 
 	/**
-	 * @param CraftingGrid $grid
-	 *
 	 * @return Item[]
 	 */
-	public function getResultsFor(CraftingGrid $grid) : array{
-		return $this->getResults();
+	public function getAllResults() : array{
+		$results = $this->extraResults;
+		array_unshift($results, $this->primaryResult);
+		return $results;
+	}
+
+	/**
+	 * @return UUID|null
+	 */
+	public function getId() : ?UUID{
+		return $this->id;
+	}
+
+	public function setId(UUID $id){
+		if($this->id !== null){
+			throw new \InvalidStateException("Id is already set");
+		}
+
+		$this->id = $id;
 	}
 
 	/**
@@ -135,27 +164,9 @@ class ShapedRecipe implements CraftingRecipe{
 	public function getIngredientMap() : array{
 		$ingredients = [];
 
-		for($y = 0; $y < $this->height; ++$y){
-			for($x = 0; $x < $this->width; ++$x){
+		for($y = 0, $y2 = $this->getHeight(); $y < $y2; ++$y){
+			for($x = 0, $x2 = $this->getWidth(); $x < $x2; ++$x){
 				$ingredients[$y][$x] = $this->getIngredient($x, $y);
-			}
-		}
-
-		return $ingredients;
-	}
-
-	/**
-	 * @return Item[]
-	 */
-	public function getIngredientList() : array{
-		$ingredients = [];
-
-		for($y = 0; $y < $this->height; ++$y){
-			for($x = 0; $x < $this->width; ++$x){
-				$ingredient = $this->getIngredient($x, $y);
-				if(!$ingredient->isNull()){
-					$ingredients[] = $ingredient;
-				}
 			}
 		}
 
@@ -185,20 +196,38 @@ class ShapedRecipe implements CraftingRecipe{
 		$manager->registerShapedRecipe($this);
 	}
 
+	public function requiresCraftingTable() : bool{
+		return $this->getHeight() > 2 or $this->getWidth() > 2;
+	}
+
 	/**
-	 * @param CraftingGrid $grid
-	 * @param bool         $reverse
+	 * @param Item[][] $input
 	 *
 	 * @return bool
 	 */
-	private function matchInputMap(CraftingGrid $grid, bool $reverse) : bool{
-		for($y = 0; $y < $this->height; ++$y){
-			for($x = 0; $x < $this->width; ++$x){
+	private function matchInputMap(array $input) : bool{
+		$map = $this->getIngredientMap();
 
-				$given = $grid->getIngredient($reverse ? $this->width - $x - 1 : $x, $y);
-				$required = $this->getIngredient($x, $y);
-				if(!$required->equals($given, !$required->hasAnyDamageValue(), $required->hasCompoundTag()) or $required->getCount() > $given->getCount()){
+		//match the given items to the requested items
+		for($y = 0, $y2 = $this->getHeight(); $y < $y2; ++$y){
+			for($x = 0, $x2 = $this->getWidth(); $x < $x2; ++$x){
+				$given = $input[$y][$x] ?? null;
+				$required = $map[$y][$x];
+
+				if($given === null or !$required->equals($given, !$required->hasAnyDamageValue(), $required->hasCompoundTag()) or $required->getCount() !== $given->getCount()){
 					return false;
+				}
+
+				unset($input[$y][$x]);
+			}
+		}
+
+		//check if there are any items left in the grid outside of the recipe
+		/** @var Item[] $row */
+		foreach($input as $y => $row){
+			foreach($row as $x => $needItem){
+				if(!$needItem->isNull()){
+					return false; //too many input ingredients
 				}
 			}
 		}
@@ -207,15 +236,38 @@ class ShapedRecipe implements CraftingRecipe{
 	}
 
 	/**
-	 * @param CraftingGrid $grid
+	 * @param Item[][] $input
+	 * @param Item[][] $output
 	 *
 	 * @return bool
 	 */
-	public function matchesCraftingGrid(CraftingGrid $grid) : bool{
-		if($this->width !== $grid->getRecipeWidth() or $this->height !== $grid->getRecipeHeight()){
+	public function matchItems(array $input, array $output) : bool{
+		if(
+			!$this->matchInputMap($input) and //as-is
+			!$this->matchInputMap(array_map(function(array $row) : array{ return array_reverse($row, false); }, $input)) //mirrored
+		){
 			return false;
 		}
 
-		return $this->matchInputMap($grid, false) or $this->matchInputMap($grid, true);
+		//and then, finally, check that the output items are good:
+
+		/** @var Item[] $haveItems */
+		$haveItems = array_merge(...$output);
+		$needItems = $this->getExtraResults();
+		foreach($haveItems as $j => $haveItem){
+			if($haveItem->isNull()){
+				unset($haveItems[$j]);
+				continue;
+			}
+
+			foreach($needItems as $i => $needItem){
+				if($needItem->equals($haveItem, !$needItem->hasAnyDamageValue(), $needItem->hasCompoundTag()) and $needItem->getCount() === $haveItem->getCount()){
+					unset($haveItems[$j], $needItems[$i]);
+					break;
+				}
+			}
+		}
+
+		return count($haveItems) === 0 and count($needItems) === 0;
 	}
 }

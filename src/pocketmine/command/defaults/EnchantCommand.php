@@ -59,7 +59,7 @@ class EnchantCommand extends VanillaCommand{
 
 		$item = $player->getInventory()->getItemInHand();
 
-		if($item->isNull()){
+		if($item->getId() <= 0){
 			$sender->sendMessage(new TranslationContainer("commands.enchant.noItem"));
 			return true;
 		}

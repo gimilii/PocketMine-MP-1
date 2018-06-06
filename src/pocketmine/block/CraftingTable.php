@@ -23,7 +23,7 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
-use pocketmine\inventory\CraftingGrid;
+use pocketmine\inventory\BigCraftingGrid;
 use pocketmine\item\Item;
 use pocketmine\Player;
 
@@ -49,7 +49,7 @@ class CraftingTable extends Solid{
 
 	public function onActivate(Item $item, Player $player = null) : bool{
 		if($player instanceof Player){
-			$player->setCraftingGrid(new CraftingGrid($player, CraftingGrid::SIZE_BIG));
+			$player->setCraftingGrid(new BigCraftingGrid($player));
 		}
 
 		return true;

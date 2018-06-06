@@ -33,14 +33,14 @@ class RiderJumpPacket extends DataPacket{
 	public const NETWORK_ID = ProtocolInfo::RIDER_JUMP_PACKET;
 
 	/** @var int */
-	public $jumpStrength; //percentage
+	public $unknown;
 
 	protected function decodePayload(){
-		$this->jumpStrength = $this->getVarInt();
+		$this->unknown = $this->getVarInt();
 	}
 
 	protected function encodePayload(){
-		$this->putVarInt($this->jumpStrength);
+		$this->putVarInt($this->unknown);
 	}
 
 	public function handle(NetworkSession $session) : bool{

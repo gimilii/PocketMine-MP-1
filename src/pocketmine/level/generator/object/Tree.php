@@ -60,9 +60,7 @@ abstract class Tree{
 			case Sapling::JUNGLE:
 				$tree = new JungleTree();
 				break;
-			case Sapling::ACACIA:
-			case Sapling::DARK_OAK:
-				return; //TODO
+			case Sapling::OAK:
 			default:
 				$tree = new OakTree();
 				/*if($random->nextRange(0, 9) === 0){
