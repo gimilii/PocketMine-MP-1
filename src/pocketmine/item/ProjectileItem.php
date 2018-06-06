@@ -56,6 +56,7 @@ abstract class ProjectileItem extends Item{
 		}
 
 		$this->count--;
+
 		if($projectile instanceof Projectile){
 			$player->getServer()->getPluginManager()->callEvent($projectileEv = new ProjectileLaunchEvent($projectile));
 			if($projectileEv->isCancelled()){

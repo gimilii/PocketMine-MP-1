@@ -104,9 +104,6 @@ use pocketmine\utils\TextFormat;
 use pocketmine\utils\Utils;
 use pocketmine\utils\UUID;
 use pocketmine\utils\VersionString;
-use pocketmine\entity\ai\AIHolder;
-use pocketmine\tile\MobSpawner;
-
 
 /**
  * The class that manages everything
@@ -289,10 +286,6 @@ class Server{
 
 	/** @var Level */
 	private $levelDefault = null;
-	
-	public $aiConfig = [];
-	public $aiEnabled = false;
-	public $aiHolder = null;
 
 	/**
 	 * @return string
@@ -1473,22 +1466,6 @@ class Server{
 				@file_put_contents($this->dataPath . "pocketmine.yml", $content);
 			}
 			$this->config = new Config($this->dataPath . "pocketmine.yml", Config::YAML, []);
-				
-			$this->aiEnabled = true;
-			$this->aiConfig = [
-					"cow" =>  true,
-					"chicken" => true,
-					"zombie" => true,
-					"skeleton" => true,
-					"pig" => true,
-					"sheep" => true,
-					"creeper" => true,
-					"irongolem" => true,
-					"snowgolem" => true,
-					"pigzombie" => true,
-					"creeperexplode" => false,
-					"mobgenerate" => false,
-			];
 
 			define('pocketmine\DEBUG', (int) $this->getProperty("debug.level", 1));
 
@@ -1659,9 +1636,6 @@ class Server{
 			Biome::init();
 
 			$this->craftingManager = new CraftingManager();
-			
-			if($this->aiEnabled) $this->aiHolder = new AIHolder($this);
-			
 
 			$this->resourceManager = new ResourcePackManager($this->getDataPath() . "resource_packs" . DIRECTORY_SEPARATOR, $this->logger);
 
@@ -2633,9 +2607,5 @@ class Server{
 	 */
 	public function __sleep(){
 		throw new \BadMethodCallException("Cannot serialize Server instance");
-	}
-	
-	public function getAIHolder(){
-		return $this->aiHolder;
 	}
 }
