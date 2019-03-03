@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace pocketmine\entity\utils;
 
 use pocketmine\math\Math;
+use function max;
 
 abstract class ExperienceUtils{
 
@@ -31,6 +32,7 @@ abstract class ExperienceUtils{
 	 * Calculates and returns the amount of XP needed to get from level 0 to level $level
 	 *
 	 * @param int $level
+	 *
 	 * @return int
 	 */
 	public static function getXpToReachLevel(int $level) : int{

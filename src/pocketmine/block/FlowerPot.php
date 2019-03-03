@@ -25,86 +25,130 @@ namespace pocketmine\block;
 
 use pocketmine\item\Item;
 use pocketmine\math\AxisAlignedBB;
+use pocketmine\math\Facing;
 use pocketmine\math\Vector3;
 use pocketmine\Player;
 use pocketmine\tile\FlowerPot as TileFlowerPot;
-use pocketmine\tile\Tile;
+use function assert;
 
 class FlowerPot extends Flowable{
 
-	public const STATE_EMPTY = 0;
-	public const STATE_FULL = 1;
+	/**
+	 * TODO: get rid of this hack (it's currently needed to deal with blockfactory state handling)
+	 * @var bool
+	 */
+	protected $occupied = false;
 
-	protected $id = self::FLOWER_POT_BLOCK;
-	protected $itemId = Item::FLOWER_POT;
+	/** @var Block|null */
+	protected $plant = null;
 
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
+	protected function writeStateToMeta() : int{
+		return $this->occupied ? 1 : 0;
 	}
 
-	public function getName() : string{
-		return "Flower Pot";
+	public function readStateFromData(int $id, int $stateMeta) : void{
+		$this->occupied = $stateMeta !== 0;
 	}
 
-	protected function recalculateBoundingBox() : ?AxisAlignedBB{
-		return new AxisAlignedBB(
-			$this->x + 0.3125,
-			$this->y,
-			$this->z + 0.3125,
-			$this->x + 0.6875,
-			$this->y + 0.375,
-			$this->z + 0.6875
-		);
+	public function getStateBitmask() : int{
+		return 0b1111; //vanilla uses various values, we only care about 1 and 0 for PE
 	}
 
-	public function place(Item $item, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector, Player $player = null) : bool{
-		if($this->getSide(Vector3::SIDE_DOWN)->isTransparent()){
+	public function readStateFromWorld() : void{
+		parent::readStateFromWorld();
+		$tile = $this->level->getTile($this);
+		if($tile instanceof TileFlowerPot){
+			$this->setPlant($tile->getPlant());
+		}else{
+			$this->occupied = false;
+		}
+	}
+
+	public function writeStateToWorld() : void{
+		parent::writeStateToWorld();
+
+		$tile = $this->level->getTile($this);
+		assert($tile instanceof TileFlowerPot);
+		$tile->setPlant($this->plant);
+	}
+
+	/**
+	 * @return Block|null
+	 */
+	public function getPlant() : ?Block{
+		return $this->plant;
+	}
+
+	/**
+	 * @param Block|null $plant
+	 */
+	public function setPlant(?Block $plant) : void{
+		if($plant === null or $plant instanceof Air){
+			$this->plant = null;
+		}else{
+			$this->plant = clone $plant;
+		}
+		$this->occupied = $this->plant !== null;
+	}
+
+	public function canAddPlant(Block $block) : bool{
+		if($this->plant !== null){
 			return false;
 		}
 
-		$this->getLevel()->setBlock($blockReplace, $this, true, true);
-		Tile::createTile(Tile::FLOWER_POT, $this->getLevel(), TileFlowerPot::createNBT($this, $face, $item, $player));
-		return true;
+		return
+			$block instanceof Cactus or
+			$block instanceof Dandelion or
+			$block instanceof DeadBush or
+			$block instanceof Flower or
+			$block instanceof RedMushroom or
+			$block instanceof Sapling or
+			($block instanceof TallGrass and $block->getIdInfo()->getVariant() === 2); //fern - TODO: clean up
+		//TODO: bamboo
+	}
+
+	protected function recalculateBoundingBox() : ?AxisAlignedBB{
+		return AxisAlignedBB::one()->contract(3 / 16, 0, 3 / 16)->trim(Facing::UP, 5 / 8);
+	}
+
+	public function place(Item $item, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector, ?Player $player = null) : bool{
+		if($this->getSide(Facing::DOWN)->isTransparent()){
+			return false;
+		}
+
+		return parent::place($item, $blockReplace, $blockClicked, $face, $clickVector, $player);
 	}
 
 	public function onNearbyBlockChange() : void{
-		if($this->getSide(Vector3::SIDE_DOWN)->isTransparent()){
+		if($this->getSide(Facing::DOWN)->isTransparent()){
 			$this->getLevel()->useBreakOn($this);
 		}
 	}
 
-	public function onActivate(Item $item, Player $player = null) : bool{
-		$pot = $this->getLevel()->getTile($this);
-		if(!($pot instanceof TileFlowerPot)){
+	public function onInteract(Item $item, int $face, Vector3 $clickVector, ?Player $player = null) : bool{
+		$plant = $item->getBlock();
+		if(!$this->canAddPlant($plant)){
 			return false;
 		}
-		if(!$pot->canAddItem($item)){
-			return true;
-		}
 
-		$this->setDamage(self::STATE_FULL); //specific damage value is unnecessary, it just needs to be non-zero to show an item.
-		$this->getLevel()->setBlock($this, $this, true, false);
-		$pot->setItem($item->pop());
+		$this->setPlant($plant);
+		$item->pop();
+		$this->level->setBlock($this, $this);
 
 		return true;
 	}
 
-	public function getVariantBitmask() : int{
-		return 0;
-	}
-
 	public function getDropsForCompatibleTool(Item $item) : array{
 		$items = parent::getDropsForCompatibleTool($item);
-
-		$tile = $this->getLevel()->getTile($this);
-		if($tile instanceof TileFlowerPot){
-			$item = $tile->getItem();
-			if($item->getId() !== Item::AIR){
-				$items[] = $item;
-			}
+		if($this->plant !== null){
+			$items[] = $this->plant->asItem();
 		}
 
 		return $items;
+	}
+
+	public function getPickedItem() : Item{
+		return $this->plant !== null ? $this->plant->asItem() : parent::getPickedItem();
 	}
 
 	public function isAffectedBySilkTouch() : bool{

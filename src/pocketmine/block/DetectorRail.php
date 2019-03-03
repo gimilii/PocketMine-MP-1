@@ -23,13 +23,7 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
-class DetectorRail extends Rail{
-
-	protected $id = self::DETECTOR_RAIL;
-
-	public function getName() : string{
-		return "Detector Rail";
-	}
+class DetectorRail extends RedstoneRail{
 
 	//TODO
 }

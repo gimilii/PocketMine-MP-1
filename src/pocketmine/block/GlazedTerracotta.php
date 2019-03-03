@@ -24,12 +24,29 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
+use pocketmine\block\utils\BlockDataValidator;
 use pocketmine\item\Item;
 use pocketmine\item\TieredTool;
+use pocketmine\math\Facing;
 use pocketmine\math\Vector3;
 use pocketmine\Player;
 
 class GlazedTerracotta extends Solid{
+
+	/** @var int */
+	protected $facing = Facing::NORTH;
+
+	protected function writeStateToMeta() : int{
+		return $this->facing;
+	}
+
+	public function readStateFromData(int $id, int $stateMeta) : void{
+		$this->facing = BlockDataValidator::readHorizontalFacing($stateMeta);
+	}
+
+	public function getStateBitmask() : int{
+		return 0b111;
+	}
 
 	public function getHardness() : float{
 		return 1.4;
@@ -43,21 +60,11 @@ class GlazedTerracotta extends Solid{
 		return TieredTool::TIER_WOODEN;
 	}
 
-	public function place(Item $item, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector, Player $player = null) : bool{
+	public function place(Item $item, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector, ?Player $player = null) : bool{
 		if($player !== null){
-			$faces = [
-				0 => 4,
-				1 => 3,
-				2 => 5,
-				3 => 2
-			];
-			$this->meta = $faces[(~($player->getDirection() - 1)) & 0x03];
+			$this->facing = Facing::opposite($player->getHorizontalFacing());
 		}
 
-		return $this->getLevel()->setBlock($blockReplace, $this, true, true);
-	}
-
-	public function getVariantBitmask() : int{
-		return 0;
+		return parent::place($item, $blockReplace, $blockClicked, $face, $clickVector, $player);
 	}
 }

@@ -23,20 +23,14 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
+use pocketmine\block\utils\Fallable;
+use pocketmine\block\utils\FallableTrait;
 use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
+use function mt_rand;
 
-class Gravel extends Fallable{
-
-	protected $id = self::GRAVEL;
-
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
-	}
-
-	public function getName() : string{
-		return "Gravel";
-	}
+class Gravel extends Solid implements Fallable{
+	use FallableTrait;
 
 	public function getHardness() : float{
 		return 0.6;
@@ -56,4 +50,7 @@ class Gravel extends Fallable{
 		return parent::getDropsForCompatibleTool($item);
 	}
 
+	public function tickFalling() : ?Block{
+		return null;
+	}
 }

@@ -23,85 +23,40 @@ declare(strict_types=1);
 
 namespace pocketmine\level;
 
+use pocketmine\block\Block;
+use pocketmine\block\BlockFactory;
 use pocketmine\level\format\Chunk;
+use const INT32_MAX;
+use const INT32_MIN;
 
 class SimpleChunkManager implements ChunkManager{
 
 	/** @var Chunk[] */
 	protected $chunks = [];
 
-	protected $seed;
 	protected $worldHeight;
 
 	/**
 	 * SimpleChunkManager constructor.
 	 *
-	 * @param int $seed
 	 * @param int $worldHeight
 	 */
-	public function __construct($seed, int $worldHeight = Level::Y_MAX){
-		$this->seed = $seed;
+	public function __construct(int $worldHeight = Level::Y_MAX){
 		$this->worldHeight = $worldHeight;
 	}
 
-	/**
-	 * Gets the raw block id.
-	 *
-	 * @param int $x
-	 * @param int $y
-	 * @param int $z
-	 *
-	 * @return int 0-255
-	 */
-	public function getBlockIdAt(int $x, int $y, int $z) : int{
+	public function getBlockAt(int $x, int $y, int $z) : Block{
 		if($chunk = $this->getChunk($x >> 4, $z >> 4)){
-			return $chunk->getBlockId($x & 0xf, $y, $z & 0xf);
+			return BlockFactory::fromFullBlock($chunk->getFullBlock($x & 0xf, $y, $z & 0xf));
 		}
-		return 0;
+		return BlockFactory::get(Block::AIR);
 	}
 
-	/**
-	 * Sets the raw block id.
-	 *
-	 * @param int $x
-	 * @param int $y
-	 * @param int $z
-	 * @param int $id 0-255
-	 */
-	public function setBlockIdAt(int $x, int $y, int $z, int $id){
-		if($chunk = $this->getChunk($x >> 4, $z >> 4)){
-			$chunk->setBlockId($x & 0xf, $y, $z & 0xf, $id);
+	public function setBlockAt(int $x, int $y, int $z, Block $block) : bool{
+		if(($chunk = $this->getChunk($x >> 4, $z >> 4)) !== null){
+			return $chunk->setBlock($x & 0xf, $y, $z & 0xf, $block->getId(), $block->getMeta());
 		}
-	}
-
-	/**
-	 * Gets the raw block metadata
-	 *
-	 * @param int $x
-	 * @param int $y
-	 * @param int $z
-	 *
-	 * @return int 0-15
-	 */
-	public function getBlockDataAt(int $x, int $y, int $z) : int{
-		if($chunk = $this->getChunk($x >> 4, $z >> 4)){
-			return $chunk->getBlockData($x & 0xf, $y, $z & 0xf);
-		}
-		return 0;
-	}
-
-	/**
-	 * Sets the raw block metadata.
-	 *
-	 * @param int $x
-	 * @param int $y
-	 * @param int $z
-	 * @param int $data 0-15
-	 */
-	public function setBlockDataAt(int $x, int $y, int $z, int $data){
-		if($chunk = $this->getChunk($x >> 4, $z >> 4)){
-			$chunk->setBlockData($x & 0xf, $y, $z & 0xf, $data);
-		}
+		return false;
 	}
 
 	public function getBlockLightAt(int $x, int $y, int $z) : int{
@@ -112,7 +67,7 @@ class SimpleChunkManager implements ChunkManager{
 		return 0;
 	}
 
-	public function setBlockLightAt(int $x, int $y, int $z, int $level){
+	public function setBlockLightAt(int $x, int $y, int $z, int $level) : void{
 		if($chunk = $this->getChunk($x >> 4, $z >> 4)){
 			$chunk->setBlockLight($x & 0xf, $y, $z & 0xf, $level);
 		}
@@ -126,7 +81,7 @@ class SimpleChunkManager implements ChunkManager{
 		return 0;
 	}
 
-	public function setBlockSkyLightAt(int $x, int $y, int $z, int $level){
+	public function setBlockSkyLightAt(int $x, int $y, int $z, int $level) : void{
 		if($chunk = $this->getChunk($x >> 4, $z >> 4)){
 			$chunk->setBlockSkyLight($x & 0xf, $y, $z & 0xf, $level);
 		}
@@ -138,7 +93,7 @@ class SimpleChunkManager implements ChunkManager{
 	 *
 	 * @return Chunk|null
 	 */
-	public function getChunk(int $chunkX, int $chunkZ){
+	public function getChunk(int $chunkX, int $chunkZ) : ?Chunk{
 		return $this->chunks[Level::chunkHash($chunkX, $chunkZ)] ?? null;
 	}
 
@@ -147,7 +102,7 @@ class SimpleChunkManager implements ChunkManager{
 	 * @param int        $chunkZ
 	 * @param Chunk|null $chunk
 	 */
-	public function setChunk(int $chunkX, int $chunkZ, Chunk $chunk = null){
+	public function setChunk(int $chunkX, int $chunkZ, ?Chunk $chunk) : void{
 		if($chunk === null){
 			unset($this->chunks[Level::chunkHash($chunkX, $chunkZ)]);
 			return;
@@ -155,17 +110,8 @@ class SimpleChunkManager implements ChunkManager{
 		$this->chunks[Level::chunkHash($chunkX, $chunkZ)] = $chunk;
 	}
 
-	public function cleanChunks(){
+	public function cleanChunks() : void{
 		$this->chunks = [];
-	}
-
-	/**
-	 * Gets the level seed
-	 *
-	 * @return int
-	 */
-	public function getSeed() : int{
-		return $this->seed;
 	}
 
 	public function getWorldHeight() : int{

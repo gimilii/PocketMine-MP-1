@@ -24,7 +24,8 @@ declare(strict_types=1);
 namespace pocketmine\level\format\io;
 
 use pocketmine\level\format\Chunk;
-use pocketmine\math\Vector3;
+use pocketmine\level\format\io\exception\CorruptedChunkException;
+use pocketmine\level\format\io\exception\UnsupportedChunkFormatException;
 
 interface LevelProvider{
 
@@ -32,13 +33,6 @@ interface LevelProvider{
 	 * @param string $path
 	 */
 	public function __construct(string $path);
-
-	/**
-	 * Returns the full provider name, like "anvil" or "mcregion", will be used to find the correct format.
-	 *
-	 * @return string
-	 */
-	public static function getProviderName() : string;
 
 	/**
 	 * Gets the build height limit of this world
@@ -71,19 +65,7 @@ interface LevelProvider{
 	 * @param string  $generator
 	 * @param array[] $options
 	 */
-	public static function generate(string $path, string $name, int $seed, string $generator, array $options = []);
-
-	/**
-	 * Returns the generator name
-	 *
-	 * @return string
-	 */
-	public function getGenerator() : string;
-
-	/**
-	 * @return array
-	 */
-	public function getGeneratorOptions() : array;
+	public static function generate(string $path, string $name, int $seed, string $generator, array $options = []) : void;
 
 	/**
 	 * Saves a chunk (usually to disk).
@@ -100,66 +82,33 @@ interface LevelProvider{
 	 *
 	 * @return null|Chunk
 	 *
-	 * @throws \Exception any of a range of exceptions that could be thrown while reading chunks. See individual
-	 * implementations for details.
+	 * @throws CorruptedChunkException
+	 * @throws UnsupportedChunkFormatException
 	 */
 	public function loadChunk(int $chunkX, int $chunkZ) : ?Chunk;
 
 	/**
-	 * @return string
-	 */
-	public function getName() : string;
-
-	/**
-	 * @return int
-	 */
-	public function getTime() : int;
-
-	/**
-	 * @param int
-	 */
-	public function setTime(int $value);
-
-	/**
-	 * @return int
-	 */
-	public function getSeed() : int;
-
-	/**
-	 * @param int
-	 */
-	public function setSeed(int $value);
-
-	/**
-	 * @return Vector3
-	 */
-	public function getSpawn() : Vector3;
-
-	/**
-	 * @param Vector3 $pos
-	 */
-	public function setSpawn(Vector3 $pos);
-
-	/**
-	 * Returns the world difficulty. This will be one of the Level constants.
-	 * @return int
-	 */
-	public function getDifficulty() : int;
-
-	/**
-	 * Sets the world difficulty.
-	 * @param int $difficulty
-	 */
-	public function setDifficulty(int $difficulty);
-
-	/**
 	 * Performs garbage collection in the level provider, such as cleaning up regions in Region-based worlds.
 	 */
-	public function doGarbageCollection();
+	public function doGarbageCollection() : void;
+
+	/**
+	 * Returns information about the world
+	 *
+	 * @return LevelData
+	 */
+	public function getLevelData() : LevelData;
 
 	/**
 	 * Performs cleanups necessary when the level provider is closed and no longer needed.
 	 */
-	public function close();
+	public function close() : void;
+
+	/**
+	 * Returns a generator which yields all the chunks in this level.
+	 *
+	 * @return \Generator|Chunk[]
+	 */
+	public function getAllChunks() : \Generator;
 
 }

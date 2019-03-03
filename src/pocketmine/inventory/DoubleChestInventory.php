@@ -26,6 +26,9 @@ namespace pocketmine\inventory;
 use pocketmine\item\Item;
 use pocketmine\Player;
 use pocketmine\tile\Chest;
+use function array_merge;
+use function array_slice;
+use function count;
 
 class DoubleChestInventory extends ChestInventory implements InventoryHolder{
 	/** @var ChestInventory */
@@ -38,10 +41,6 @@ class DoubleChestInventory extends ChestInventory implements InventoryHolder{
 		$this->right = $right->getRealInventory();
 		$items = array_merge($this->left->getContents(true), $this->right->getContents(true));
 		BaseInventory::__construct($items);
-	}
-
-	public function getName() : string{
-		return "Double Chest";
 	}
 
 	public function getDefaultSize() : int{
@@ -60,15 +59,16 @@ class DoubleChestInventory extends ChestInventory implements InventoryHolder{
 	}
 
 	public function getItem(int $index) : Item{
-		return $index < $this->left->getSize() ? $this->left->getItem($index) : $this->right->getItem($index - $this->right->getSize());
+		return $index < $this->left->getSize() ? $this->left->getItem($index) : $this->right->getItem($index - $this->left->getSize());
 	}
 
 	public function setItem(int $index, Item $item, bool $send = true) : bool{
-		return $index < $this->left->getSize() ? $this->left->setItem($index, $item, $send) : $this->right->setItem($index - $this->right->getSize(), $item, $send);
-	}
-
-	public function clear(int $index, bool $send = true) : bool{
-		return $index < $this->left->getSize() ? $this->left->clear($index, $send) : $this->right->clear($index - $this->right->getSize(), $send);
+		$old = $this->getItem($index);
+		if($index < $this->left->getSize() ? $this->left->setItem($index, $item, $send) : $this->right->setItem($index - $this->left->getSize(), $item, $send)){
+			$this->onSlotChange($index, $old, $send);
+			return true;
+		}
+		return false;
 	}
 
 	public function getContents(bool $includeEmpty = false) : array{
@@ -109,7 +109,7 @@ class DoubleChestInventory extends ChestInventory implements InventoryHolder{
 		}
 	}
 
-	public function onOpen(Player $who) : void{
+	protected function onOpen(Player $who) : void{
 		parent::onOpen($who);
 
 		if(count($this->getViewers()) === 1 and $this->right->getHolder()->isValid()){
@@ -117,7 +117,7 @@ class DoubleChestInventory extends ChestInventory implements InventoryHolder{
 		}
 	}
 
-	public function onClose(Player $who) : void{
+	protected function onClose(Player $who) : void{
 		if(count($this->getViewers()) === 1 and $this->right->getHolder()->isValid()){
 			$this->right->broadcastBlockEventPacket(false);
 		}

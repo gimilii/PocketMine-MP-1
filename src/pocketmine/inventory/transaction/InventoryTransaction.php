@@ -29,7 +29,12 @@ use pocketmine\inventory\transaction\action\InventoryAction;
 use pocketmine\inventory\transaction\action\SlotChangeAction;
 use pocketmine\item\Item;
 use pocketmine\Player;
-use pocketmine\Server;
+use function assert;
+use function count;
+use function get_class;
+use function min;
+use function spl_object_hash;
+use function spl_object_id;
 
 /**
  * This InventoryTransaction only allows doing Transaction between one / two inventories
@@ -81,8 +86,8 @@ class InventoryTransaction{
 	 * @param InventoryAction $action
 	 */
 	public function addAction(InventoryAction $action) : void{
-		if(!isset($this->actions[$hash = spl_object_hash($action)])){
-			$this->actions[spl_object_hash($action)] = $action;
+		if(!isset($this->actions[$hash = spl_object_id($action)])){
+			$this->actions[$hash] = $action;
 			$action->onAddToTransaction($this);
 		}else{
 			throw new \InvalidArgumentException("Tried to add the same action to a transaction twice");
@@ -96,7 +101,7 @@ class InventoryTransaction{
 	 * @param Inventory $inventory
 	 */
 	public function addInventory(Inventory $inventory) : void{
-		if(!isset($this->inventories[$hash = spl_object_hash($inventory)])){
+		if(!isset($this->inventories[$hash = spl_object_id($inventory)])){
 			$this->inventories[$hash] = $inventory;
 		}
 	}
@@ -173,6 +178,9 @@ class InventoryTransaction{
 
 			$inventory = $inventories[$hash];
 			$slot = $slots[$hash];
+			if(!$inventory->slotExists($slot)){ //this can get hit for crafting tables because the validation happens after this compaction
+				throw new TransactionValidationException("Slot $slot does not exist in inventory " . get_class($inventory));
+			}
 			$sourceItem = $inventory->getItem($slot);
 
 			$targetItem = $this->findResultItem($sourceItem, $list);
@@ -181,7 +189,7 @@ class InventoryTransaction{
 			}
 
 			foreach($list as $action){
-				unset($this->actions[spl_object_hash($action)]);
+				unset($this->actions[spl_object_id($action)]);
 			}
 
 			if(!$targetItem->equalsExact($sourceItem)){
@@ -247,7 +255,8 @@ class InventoryTransaction{
 	}
 
 	protected function callExecuteEvent() : bool{
-		Server::getInstance()->getPluginManager()->callEvent($ev = new InventoryTransactionEvent($this));
+		$ev = new InventoryTransactionEvent($this);
+		$ev->call();
 		return !$ev->isCancelled();
 	}
 

@@ -28,6 +28,10 @@ use pocketmine\lang\TranslationContainer;
 use pocketmine\network\mcpe\protocol\ProtocolInfo;
 use pocketmine\plugin\Plugin;
 use pocketmine\utils\TextFormat;
+use function count;
+use function implode;
+use function stripos;
+use function strtolower;
 
 class VersionCommand extends VanillaCommand{
 
@@ -50,8 +54,6 @@ class VersionCommand extends VanillaCommand{
 			$sender->sendMessage(new TranslationContainer("pocketmine.server.info.extended", [
 				$sender->getServer()->getName(),
 				$sender->getServer()->getPocketMineVersion(),
-				$sender->getServer()->getCodename(),
-				$sender->getServer()->getApiVersion(),
 				$sender->getServer()->getVersion(),
 				ProtocolInfo::CURRENT_PROTOCOL
 			]));
@@ -82,7 +84,7 @@ class VersionCommand extends VanillaCommand{
 		return true;
 	}
 
-	private function describeToSender(Plugin $plugin, CommandSender $sender){
+	private function describeToSender(Plugin $plugin, CommandSender $sender) : void{
 		$desc = $plugin->getDescription();
 		$sender->sendMessage(TextFormat::DARK_GREEN . $desc->getName() . TextFormat::WHITE . " version " . TextFormat::DARK_GREEN . $desc->getVersion());
 

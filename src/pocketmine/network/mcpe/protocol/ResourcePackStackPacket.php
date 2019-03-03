@@ -27,10 +27,11 @@ namespace pocketmine\network\mcpe\protocol;
 #include <rules/DataPacket.h>
 
 
-use pocketmine\network\mcpe\NetworkSession;
+use pocketmine\network\mcpe\handler\SessionHandler;
 use pocketmine\resourcepacks\ResourcePack;
+use function count;
 
-class ResourcePackStackPacket extends DataPacket{
+class ResourcePackStackPacket extends DataPacket implements ClientboundPacket{
 	public const NETWORK_ID = ProtocolInfo::RESOURCE_PACK_STACK_PACKET;
 
 	/** @var bool */
@@ -41,24 +42,29 @@ class ResourcePackStackPacket extends DataPacket{
 	/** @var ResourcePack[] */
 	public $resourcePackStack = [];
 
-	protected function decodePayload(){
-		/*$this->mustAccept = $this->getBool();
+	/** @var bool */
+	public $isExperimental = false;
+
+	protected function decodePayload() : void{
+		$this->mustAccept = $this->getBool();
 		$behaviorPackCount = $this->getUnsignedVarInt();
 		while($behaviorPackCount-- > 0){
-			$packId = $this->getString();
-			$version = $this->getString();
-			$this->behaviorPackStack[] = new ResourcePackInfoEntry($packId, $version);
+			$this->getString();
+			$this->getString();
+			$this->getString();
 		}
 
 		$resourcePackCount = $this->getUnsignedVarInt();
 		while($resourcePackCount-- > 0){
-			$packId = $this->getString();
-			$version = $this->getString();
-			$this->resourcePackStack[] = new ResourcePackInfoEntry($packId, $version);
-		}*/
+			$this->getString();
+			$this->getString();
+			$this->getString();
+		}
+
+		$this->isExperimental = $this->getBool();
 	}
 
-	protected function encodePayload(){
+	protected function encodePayload() : void{
 		$this->putBool($this->mustAccept);
 
 		$this->putUnsignedVarInt(count($this->behaviorPackStack));
@@ -74,9 +80,11 @@ class ResourcePackStackPacket extends DataPacket{
 			$this->putString($entry->getPackVersion());
 			$this->putString(""); //TODO: subpack name
 		}
+
+		$this->putBool($this->isExperimental);
 	}
 
-	public function handle(NetworkSession $session) : bool{
-		return $session->handleResourcePackStack($this);
+	public function handle(SessionHandler $handler) : bool{
+		return $handler->handleResourcePackStack($this);
 	}
 }

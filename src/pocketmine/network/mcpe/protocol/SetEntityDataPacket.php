@@ -26,9 +26,9 @@ namespace pocketmine\network\mcpe\protocol;
 #include <rules/DataPacket.h>
 
 
-use pocketmine\network\mcpe\NetworkSession;
+use pocketmine\network\mcpe\handler\SessionHandler;
 
-class SetEntityDataPacket extends DataPacket{
+class SetEntityDataPacket extends DataPacket implements ClientboundPacket, ServerboundPacket{ //TODO: check why this is serverbound
 	public const NETWORK_ID = ProtocolInfo::SET_ENTITY_DATA_PACKET;
 
 	/** @var int */
@@ -36,17 +36,17 @@ class SetEntityDataPacket extends DataPacket{
 	/** @var array */
 	public $metadata;
 
-	protected function decodePayload(){
+	protected function decodePayload() : void{
 		$this->entityRuntimeId = $this->getEntityRuntimeId();
 		$this->metadata = $this->getEntityMetadata();
 	}
 
-	protected function encodePayload(){
+	protected function encodePayload() : void{
 		$this->putEntityRuntimeId($this->entityRuntimeId);
 		$this->putEntityMetadata($this->metadata);
 	}
 
-	public function handle(NetworkSession $session) : bool{
-		return $session->handleSetEntityData($this);
+	public function handle(SessionHandler $handler) : bool{
+		return $handler->handleSetEntityData($this);
 	}
 }

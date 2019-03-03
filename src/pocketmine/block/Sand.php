@@ -23,13 +23,11 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
-class Sand extends Fallable{
+use pocketmine\block\utils\Fallable;
+use pocketmine\block\utils\FallableTrait;
 
-	protected $id = self::SAND;
-
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
-	}
+class Sand extends Solid implements Fallable{
+	use FallableTrait;
 
 	public function getHardness() : float{
 		return 0.5;
@@ -39,12 +37,7 @@ class Sand extends Fallable{
 		return BlockToolType::TYPE_SHOVEL;
 	}
 
-	public function getName() : string{
-		if($this->meta === 0x01){
-			return "Red Sand";
-		}
-
-		return "Sand";
+	public function tickFalling() : ?Block{
+		return null;
 	}
-
 }

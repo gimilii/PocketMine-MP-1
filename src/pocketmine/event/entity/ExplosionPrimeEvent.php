@@ -25,11 +25,14 @@ namespace pocketmine\event\entity;
 
 use pocketmine\entity\Entity;
 use pocketmine\event\Cancellable;
+use pocketmine\event\CancellableTrait;
 
 /**
  * Called when a entity decides to explode
  */
 class ExplosionPrimeEvent extends EntityEvent implements Cancellable{
+	use CancellableTrait;
+
 	/** @var float */
 	protected $force;
 	/** @var bool */
@@ -52,7 +55,7 @@ class ExplosionPrimeEvent extends EntityEvent implements Cancellable{
 		return $this->force;
 	}
 
-	public function setForce(float $force){
+	public function setForce(float $force) : void{
 		$this->force = $force;
 	}
 
@@ -66,8 +69,7 @@ class ExplosionPrimeEvent extends EntityEvent implements Cancellable{
 	/**
 	 * @param bool $affectsBlocks
 	 */
-	public function setBlockBreaking(bool $affectsBlocks){
+	public function setBlockBreaking(bool $affectsBlocks) : void{
 		$this->blockBreaking = $affectsBlocks;
 	}
-
 }

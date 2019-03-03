@@ -27,12 +27,6 @@ use pocketmine\item\TieredTool;
 
 class QuartzStairs extends Stair{
 
-	protected $id = self::QUARTZ_STAIRS;
-
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
-	}
-
 	public function getHardness() : float{
 		return 0.8;
 	}
@@ -44,9 +38,4 @@ class QuartzStairs extends Stair{
 	public function getToolHarvestLevel() : int{
 		return TieredTool::TIER_WOODEN;
 	}
-
-	public function getName() : string{
-		return "Quartz Stairs";
-	}
-
 }

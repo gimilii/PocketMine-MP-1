@@ -27,16 +27,6 @@ use pocketmine\item\TieredTool;
 
 class EndStoneBricks extends Solid{
 
-	protected $id = self::END_BRICKS;
-
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
-	}
-
-	public function getName() : string{
-		return "End Stone Bricks";
-	}
-
 	public function getHardness() : float{
 		return 0.8;
 	}

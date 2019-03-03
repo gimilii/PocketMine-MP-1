@@ -34,15 +34,16 @@ use pocketmine\Player;
 class DropItemAction extends InventoryAction{
 
 	public function __construct(Item $targetItem){
-		parent::__construct(ItemFactory::get(Item::AIR, 0, 0), $targetItem);
+		parent::__construct(ItemFactory::air(), $targetItem);
 	}
 
 	public function isValid(Player $source) : bool{
-		return true;
+		return !$this->targetItem->isNull();
 	}
 
 	public function onPreExecute(Player $source) : bool{
-		$source->getServer()->getPluginManager()->callEvent($ev = new PlayerDropItemEvent($source, $this->targetItem));
+		$ev = new PlayerDropItemEvent($source, $this->targetItem);
+		$ev->call();
 		if($ev->isCancelled()){
 			return false;
 		}
@@ -54,10 +55,12 @@ class DropItemAction extends InventoryAction{
 	 * Drops the target item in front of the player.
 	 *
 	 * @param Player $source
+	 *
 	 * @return bool
 	 */
 	public function execute(Player $source) : bool{
-		return $source->dropItem($this->targetItem);
+		$source->dropItem($this->targetItem);
+		return true;
 	}
 
 	public function onExecuteSuccess(Player $source) : void{

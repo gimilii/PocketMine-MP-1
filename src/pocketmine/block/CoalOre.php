@@ -26,14 +26,9 @@ namespace pocketmine\block;
 use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
 use pocketmine\item\TieredTool;
+use function mt_rand;
 
 class CoalOre extends Solid{
-
-	protected $id = self::COAL_ORE;
-
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
-	}
 
 	public function getHardness() : float{
 		return 3;
@@ -47,17 +42,13 @@ class CoalOre extends Solid{
 		return TieredTool::TIER_WOODEN;
 	}
 
-	public function getName() : string{
-		return "Coal Ore";
-	}
-
 	public function getDropsForCompatibleTool(Item $item) : array{
 		return [
 			ItemFactory::get(Item::COAL)
 		];
 	}
 
-	public function getXpDropForTool(Item $item) : int{
+	protected function getXpDropAmount() : int{
 		return mt_rand(0, 2);
 	}
 }

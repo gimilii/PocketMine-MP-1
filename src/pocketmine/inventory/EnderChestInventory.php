@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace pocketmine\inventory;
 
 use pocketmine\level\Position;
+use pocketmine\network\mcpe\protocol\LevelSoundEventPacket;
 use pocketmine\network\mcpe\protocol\types\WindowTypes;
 use pocketmine\tile\EnderChest;
 
@@ -40,10 +41,6 @@ class EnderChestInventory extends ChestInventory{
 		return WindowTypes::CONTAINER;
 	}
 
-	public function getName() : string{
-		return "EnderChest";
-	}
-
 	public function getDefaultSize() : int{
 		return 27;
 	}
@@ -53,9 +50,17 @@ class EnderChestInventory extends ChestInventory{
 	 *
 	 * @param EnderChest $enderChest
 	 */
-	public function setHolderPosition(EnderChest $enderChest){
+	public function setHolderPosition(EnderChest $enderChest) : void{
 		$this->holder->setComponents($enderChest->getFloorX(), $enderChest->getFloorY(), $enderChest->getFloorZ());
 		$this->holder->setLevel($enderChest->getLevel());
+	}
+
+	protected function getOpenSound() : int{
+		return LevelSoundEventPacket::SOUND_ENDERCHEST_OPEN;
+	}
+
+	protected function getCloseSound() : int{
+		return LevelSoundEventPacket::SOUND_ENDERCHEST_CLOSED;
 	}
 
 	/**
@@ -65,5 +70,4 @@ class EnderChestInventory extends ChestInventory{
 	public function getHolder(){
 		return $this->holder;
 	}
-
 }

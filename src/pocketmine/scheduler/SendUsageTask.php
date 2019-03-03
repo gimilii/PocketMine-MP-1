@@ -25,9 +25,18 @@ namespace pocketmine\scheduler;
 
 use pocketmine\network\mcpe\protocol\ProtocolInfo;
 use pocketmine\Server;
+use pocketmine\utils\Internet;
 use pocketmine\utils\Utils;
 use pocketmine\utils\UUID;
 use pocketmine\utils\VersionString;
+use function array_values;
+use function count;
+use function json_encode;
+use function md5;
+use function microtime;
+use function php_uname;
+use function strlen;
+use const PHP_VERSION;
 
 class SendUsageTask extends AsyncTask{
 
@@ -55,13 +64,13 @@ class SendUsageTask extends AsyncTask{
 			case self::TYPE_OPEN:
 				$data["event"] = "open";
 
-				$version = new VersionString();
+				$version = new VersionString(\pocketmine\BASE_VERSION, \pocketmine\IS_DEVELOPMENT_BUILD, \pocketmine\BUILD_NUMBER);
 
 				$data["server"] = [
 					"port" => $server->getPort(),
 					"software" => $server->getName(),
-					"fullVersion" => $version->get(true),
-					"version" => $version->get(),
+					"fullVersion" => $version->getFullVersion(true),
+					"version" => $version->getFullVersion(false),
 					"build" => $version->getBuild(),
 					"api" => $server->getApiVersion(),
 					"minecraftVersion" => $server->getVersion(),
@@ -145,14 +154,10 @@ class SendUsageTask extends AsyncTask{
 		$this->data = json_encode($data/*, JSON_PRETTY_PRINT*/);
 	}
 
-	public function onRun(){
-		try{
-			Utils::postURL($this->endpoint, $this->data, 5, [
-				"Content-Type: application/json",
-				"Content-Length: " . strlen($this->data)
-			]);
-		}catch(\Throwable $e){
-
-		}
+	public function onRun() : void{
+		Internet::postURL($this->endpoint, $this->data, 5, [
+			"Content-Type: application/json",
+			"Content-Length: " . strlen($this->data)
+		]);
 	}
 }

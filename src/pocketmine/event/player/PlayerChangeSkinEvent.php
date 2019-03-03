@@ -25,12 +25,15 @@ namespace pocketmine\event\player;
 
 use pocketmine\entity\Skin;
 use pocketmine\event\Cancellable;
+use pocketmine\event\CancellableTrait;
 use pocketmine\Player;
 
 /**
  * Called when a player changes their skin in-game.
  */
 class PlayerChangeSkinEvent extends PlayerEvent implements Cancellable{
+	use CancellableTrait;
+
 	/** @var Skin */
 	private $oldSkin;
 	/** @var Skin */
@@ -63,6 +66,7 @@ class PlayerChangeSkinEvent extends PlayerEvent implements Cancellable{
 
 	/**
 	 * @param Skin $skin
+	 *
 	 * @throws \InvalidArgumentException if the specified skin is not valid
 	 */
 	public function setNewSkin(Skin $skin) : void{
@@ -72,5 +76,4 @@ class PlayerChangeSkinEvent extends PlayerEvent implements Cancellable{
 
 		$this->newSkin = $skin;
 	}
-
 }

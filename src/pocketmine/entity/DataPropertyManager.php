@@ -25,6 +25,10 @@ namespace pocketmine\entity;
 
 use pocketmine\item\Item;
 use pocketmine\math\Vector3;
+use function assert;
+use function is_float;
+use function is_int;
+use function is_string;
 
 class DataPropertyManager{
 
@@ -143,7 +147,8 @@ class DataPropertyManager{
 	 */
 	public function getItem(int $key) : ?Item{
 		$value = $this->getPropertyValue($key, Entity::DATA_TYPE_SLOT);
-		assert($value instanceof Item  or $value === null);
+		assert($value instanceof Item or $value === null);
+
 		return $value;
 	}
 

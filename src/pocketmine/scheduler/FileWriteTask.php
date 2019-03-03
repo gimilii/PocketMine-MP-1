@@ -23,6 +23,8 @@ declare(strict_types=1);
 
 namespace pocketmine\scheduler;
 
+use function file_put_contents;
+
 class FileWriteTask extends AsyncTask{
 
 	/** @var string */
@@ -43,11 +45,7 @@ class FileWriteTask extends AsyncTask{
 		$this->flags = $flags;
 	}
 
-	public function onRun(){
-		try{
-			file_put_contents($this->path, $this->contents, $this->flags);
-		}catch(\Throwable $e){
-
-		}
+	public function onRun() : void{
+		file_put_contents($this->path, $this->contents, $this->flags);
 	}
 }

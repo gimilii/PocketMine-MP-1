@@ -23,22 +23,32 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
+use pocketmine\block\utils\BlockDataValidator;
 use pocketmine\entity\Entity;
 use pocketmine\event\block\BlockGrowEvent;
 use pocketmine\event\entity\EntityDamageByBlockEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\item\Item;
 use pocketmine\math\AxisAlignedBB;
+use pocketmine\math\Facing;
 use pocketmine\math\Vector3;
 use pocketmine\Player;
-use pocketmine\Server;
 
 class Cactus extends Transparent{
 
-	protected $id = self::CACTUS;
+	/** @var int */
+	protected $age = 0;
 
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
+	protected function writeStateToMeta() : int{
+		return $this->age;
+	}
+
+	public function readStateFromData(int $id, int $stateMeta) : void{
+		$this->age = BlockDataValidator::readBoundedInt("age", $stateMeta, 0, 15);
+	}
+
+	public function getStateBitmask() : int{
+		return 0b1111;
 	}
 
 	public function getHardness() : float{
@@ -49,35 +59,24 @@ class Cactus extends Transparent{
 		return true;
 	}
 
-	public function getName() : string{
-		return "Cactus";
-	}
-
 	protected function recalculateBoundingBox() : ?AxisAlignedBB{
-
-		return new AxisAlignedBB(
-			$this->x + 0.0625,
-			$this->y + 0.0625,
-			$this->z + 0.0625,
-			$this->x + 0.9375,
-			$this->y + 0.9375,
-			$this->z + 0.9375
-		);
+		static $shrinkSize = 1 / 16;
+		return AxisAlignedBB::one()->contract($shrinkSize, 0, $shrinkSize)->trim(Facing::UP, $shrinkSize);
 	}
 
-	public function onEntityCollide(Entity $entity) : void{
+	public function onEntityInside(Entity $entity) : void{
 		$ev = new EntityDamageByBlockEvent($this, $entity, EntityDamageEvent::CAUSE_CONTACT, 1);
 		$entity->attack($ev);
 	}
 
 	public function onNearbyBlockChange() : void{
-		$down = $this->getSide(Vector3::SIDE_DOWN);
+		$down = $this->getSide(Facing::DOWN);
 		if($down->getId() !== self::SAND and $down->getId() !== self::CACTUS){
 			$this->getLevel()->useBreakOn($this);
 		}else{
-			for($side = 2; $side <= 5; ++$side){
+			foreach(Facing::HORIZONTAL as $side){
 				$b = $this->getSide($side);
-				if(!$b->canBeFlowedInto()){
+				if($b->isSolid()){
 					$this->getLevel()->useBreakOn($this);
 					break;
 				}
@@ -90,44 +89,42 @@ class Cactus extends Transparent{
 	}
 
 	public function onRandomTick() : void{
-		if($this->getSide(Vector3::SIDE_DOWN)->getId() !== self::CACTUS){
-			if($this->meta === 0x0f){
+		if($this->getSide(Facing::DOWN)->getId() !== self::CACTUS){
+			if($this->age === 15){
 				for($y = 1; $y < 3; ++$y){
 					$b = $this->getLevel()->getBlockAt($this->x, $this->y + $y, $this->z);
 					if($b->getId() === self::AIR){
-						Server::getInstance()->getPluginManager()->callEvent($ev = new BlockGrowEvent($b, BlockFactory::get(Block::CACTUS)));
-						if(!$ev->isCancelled()){
-							$this->getLevel()->setBlock($b, $ev->getNewState(), true);
+						$ev = new BlockGrowEvent($b, BlockFactory::get(Block::CACTUS));
+						$ev->call();
+						if($ev->isCancelled()){
+							break;
 						}
+						$this->getLevel()->setBlock($b, $ev->getNewState());
+					}else{
+						break;
 					}
 				}
-				$this->meta = 0;
+				$this->age = 0;
 				$this->getLevel()->setBlock($this, $this);
 			}else{
-				++$this->meta;
+				++$this->age;
 				$this->getLevel()->setBlock($this, $this);
 			}
 		}
 	}
 
-	public function place(Item $item, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector, Player $player = null) : bool{
-		$down = $this->getSide(Vector3::SIDE_DOWN);
+	public function place(Item $item, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector, ?Player $player = null) : bool{
+		$down = $this->getSide(Facing::DOWN);
 		if($down->getId() === self::SAND or $down->getId() === self::CACTUS){
-			$block0 = $this->getSide(Vector3::SIDE_NORTH);
-			$block1 = $this->getSide(Vector3::SIDE_SOUTH);
-			$block2 = $this->getSide(Vector3::SIDE_WEST);
-			$block3 = $this->getSide(Vector3::SIDE_EAST);
-			if($block0->isTransparent() and $block1->isTransparent() and $block2->isTransparent() and $block3->isTransparent()){
-				$this->getLevel()->setBlock($this, $this, true);
-
-				return true;
+			foreach(Facing::HORIZONTAL as $side){
+				if($this->getSide($side)->isSolid()){
+					return false;
+				}
 			}
+
+			return parent::place($item, $blockReplace, $blockClicked, $face, $clickVector, $player);
 		}
 
 		return false;
-	}
-
-	public function getVariantBitmask() : int{
-		return 0;
 	}
 }

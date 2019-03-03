@@ -27,10 +27,11 @@ namespace pocketmine\network\mcpe\protocol;
 
 
 use pocketmine\entity\Skin;
-use pocketmine\network\mcpe\NetworkSession;
+use pocketmine\network\mcpe\handler\SessionHandler;
 use pocketmine\network\mcpe\protocol\types\PlayerListEntry;
+use function count;
 
-class PlayerListPacket extends DataPacket{
+class PlayerListPacket extends DataPacket implements ClientboundPacket{
 	public const NETWORK_ID = ProtocolInfo::PLAYER_LIST_PACKET;
 
 	public const TYPE_ADD = 0;
@@ -41,12 +42,7 @@ class PlayerListPacket extends DataPacket{
 	/** @var int */
 	public $type;
 
-	public function clean(){
-		$this->entries = [];
-		return parent::clean();
-	}
-
-	protected function decodePayload(){
+	protected function decodePayload() : void{
 		$this->type = $this->getByte();
 		$count = $this->getUnsignedVarInt();
 		for($i = 0; $i < $count; ++$i){
@@ -56,8 +52,6 @@ class PlayerListPacket extends DataPacket{
 				$entry->uuid = $this->getUUID();
 				$entry->entityUniqueId = $this->getEntityUniqueId();
 				$entry->username = $this->getString();
-				$entry->thirdPartyName = $this->getString();
-				$entry->platform = $this->getVarInt();
 
 				$skinId = $this->getString();
 				$skinData = $this->getString();
@@ -82,7 +76,7 @@ class PlayerListPacket extends DataPacket{
 		}
 	}
 
-	protected function encodePayload(){
+	protected function encodePayload() : void{
 		$this->putByte($this->type);
 		$this->putUnsignedVarInt(count($this->entries));
 		foreach($this->entries as $entry){
@@ -90,8 +84,6 @@ class PlayerListPacket extends DataPacket{
 				$this->putUUID($entry->uuid);
 				$this->putEntityUniqueId($entry->entityUniqueId);
 				$this->putString($entry->username);
-				$this->putString($entry->thirdPartyName);
-				$this->putVarInt($entry->platform);
 				$this->putString($entry->skin->getSkinId());
 				$this->putString($entry->skin->getSkinData());
 				$this->putString($entry->skin->getCapeData());
@@ -105,8 +97,7 @@ class PlayerListPacket extends DataPacket{
 		}
 	}
 
-	public function handle(NetworkSession $session) : bool{
-		return $session->handlePlayerList($this);
+	public function handle(SessionHandler $handler) : bool{
+		return $handler->handlePlayerList($this);
 	}
-
 }

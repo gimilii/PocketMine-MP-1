@@ -25,15 +25,16 @@ namespace pocketmine\event\entity;
 
 use pocketmine\entity\object\ItemEntity;
 use pocketmine\event\Cancellable;
+use pocketmine\event\CancellableTrait;
 
 class ItemDespawnEvent extends EntityEvent implements Cancellable{
+	use CancellableTrait;
 
 	/**
 	 * @param ItemEntity $item
 	 */
 	public function __construct(ItemEntity $item){
 		$this->entity = $item;
-
 	}
 
 	/**
@@ -42,5 +43,4 @@ class ItemDespawnEvent extends EntityEvent implements Cancellable{
 	public function getEntity(){
 		return $this->entity;
 	}
-
 }

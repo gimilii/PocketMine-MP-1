@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace pocketmine\scheduler;
 
 use pocketmine\MemoryManager;
+use const DIRECTORY_SEPARATOR;
 
 /**
  * Task used to dump memory from AsyncWorkers
@@ -47,11 +48,9 @@ class DumpWorkerMemoryTask extends AsyncTask{
 		$this->maxStringSize = $maxStringSize;
 	}
 
-	public function onRun(){
-		global $store;
-
+	public function onRun() : void{
 		MemoryManager::dumpMemory(
-			["worker" => $this->worker, "store" => $store],
+			$this->worker,
 			$this->outputFolder . DIRECTORY_SEPARATOR . "AsyncWorker#" . $this->worker->getAsyncWorkerId(),
 			$this->maxNesting,
 			$this->maxStringSize,

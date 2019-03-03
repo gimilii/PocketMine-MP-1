@@ -25,8 +25,11 @@ namespace pocketmine\event\entity;
 
 use pocketmine\entity\Entity;
 use pocketmine\event\Cancellable;
+use pocketmine\event\CancellableTrait;
 
 class EntityCombustEvent extends EntityEvent implements Cancellable{
+	use CancellableTrait;
+
 	protected $duration;
 
 	/**
@@ -46,8 +49,7 @@ class EntityCombustEvent extends EntityEvent implements Cancellable{
 		return $this->duration;
 	}
 
-	public function setDuration(int $duration){
+	public function setDuration(int $duration) : void{
 		$this->duration = $duration;
 	}
-
 }

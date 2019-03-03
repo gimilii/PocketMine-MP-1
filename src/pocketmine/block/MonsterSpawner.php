@@ -32,14 +32,9 @@ use pocketmine\tile\Tile;
 use pocketmine\tile\MobSpawner;
 use pocketmine\math\Vector3;
 use pocketmine\Player;
+use function mt_rand;
 
 class MonsterSpawner extends Transparent{
-
-	protected $id = self::MONSTER_SPAWNER;
-
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
-	}
 
 	public function getHardness() : float{
 		return 5;
@@ -51,10 +46,6 @@ class MonsterSpawner extends Transparent{
 
 	public function getToolHarvestLevel() : int{
 		return TieredTool::TIER_WOODEN;
-	}
-
-	public function getName() : string{
-		return "Monster Spawner";
 	}
 
 	public function getDropsForCompatibleTool(Item $item) : array{

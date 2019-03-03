@@ -25,41 +25,71 @@ namespace pocketmine\network\mcpe\protocol;
 
 #include <rules/DataPacket.h>
 
-use pocketmine\network\mcpe\NetworkSession;
+use pocketmine\network\BadPacketException;
+use pocketmine\network\mcpe\handler\SessionHandler;
 use pocketmine\network\mcpe\protocol\types\ScorePacketEntry;
+use function count;
 
-class SetScorePacket extends DataPacket{
+class SetScorePacket extends DataPacket implements ClientboundPacket{
 	public const NETWORK_ID = ProtocolInfo::SET_SCORE_PACKET;
 
-	public const TYPE_MODIFY_SCORE = 0;
-	public const TYPE_RESET_SCORE = 1;
+	public const TYPE_CHANGE = 0;
+	public const TYPE_REMOVE = 1;
 
 	/** @var int */
 	public $type;
 	/** @var ScorePacketEntry[] */
 	public $entries = [];
 
-	protected function decodePayload(){
+	protected function decodePayload() : void{
 		$this->type = $this->getByte();
 		for($i = 0, $i2 = $this->getUnsignedVarInt(); $i < $i2; ++$i){
 			$entry = new ScorePacketEntry();
-			$entry->uuid = $this->getUUID();
+			$entry->scoreboardId = $this->getVarLong();
 			$entry->objectiveName = $this->getString();
 			$entry->score = $this->getLInt();
+			if($this->type !== self::TYPE_REMOVE){
+				$entry->type = $this->getByte();
+				switch($entry->type){
+					case ScorePacketEntry::TYPE_PLAYER:
+					case ScorePacketEntry::TYPE_ENTITY:
+						$entry->entityUniqueId = $this->getEntityUniqueId();
+						break;
+					case ScorePacketEntry::TYPE_FAKE_PLAYER:
+						$entry->customName = $this->getString();
+						break;
+					default:
+						throw new BadPacketException("Unknown entry type $entry->type");
+				}
+			}
 		}
 	}
 
-	protected function encodePayload(){
+	protected function encodePayload() : void{
 		$this->putByte($this->type);
 		$this->putUnsignedVarInt(count($this->entries));
 		foreach($this->entries as $entry){
-			$this->putUUID($entry->uuid);
+			$this->putVarLong($entry->scoreboardId);
 			$this->putString($entry->objectiveName);
 			$this->putLInt($entry->score);
+			if($this->type !== self::TYPE_REMOVE){
+				$this->putByte($entry->type);
+				switch($entry->type){
+					case ScorePacketEntry::TYPE_PLAYER:
+					case ScorePacketEntry::TYPE_ENTITY:
+						$this->putEntityUniqueId($entry->entityUniqueId);
+						break;
+					case ScorePacketEntry::TYPE_FAKE_PLAYER:
+						$this->putString($entry->customName);
+						break;
+					default:
+						throw new \InvalidArgumentException("Unknown entry type $entry->type");
+				}
+			}
 		}
 	}
 
-	public function handle(NetworkSession $session) : bool{
-		return $session->handleSetScore($this);
+	public function handle(SessionHandler $handler) : bool{
+		return $handler->handleSetScore($this);
 	}
 }

@@ -48,16 +48,6 @@ interface Inventory{
 	public function setMaxStackSize(int $size) : void;
 
 	/**
-	 * @return string
-	 */
-	public function getName() : string;
-
-	/**
-	 * @return string
-	 */
-	public function getTitle() : string;
-
-	/**
 	 * @param int $index
 	 *
 	 * @return Item
@@ -213,11 +203,6 @@ interface Inventory{
 	public function getViewers() : array;
 
 	/**
-	 * @param Player $who
-	 */
-	public function onOpen(Player $who) : void;
-
-	/**
 	 * Tries to open the inventory to a player
 	 *
 	 * @param Player $who
@@ -229,22 +214,21 @@ interface Inventory{
 	public function close(Player $who) : void;
 
 	/**
-	 * @param Player $who
-	 */
-	public function onClose(Player $who) : void;
-
-	/**
-	 * @param int  $index
-	 * @param Item $before
-	 * @param bool $send
-	 */
-	public function onSlotChange(int $index, Item $before, bool $send) : void;
-
-	/**
 	 * Returns whether the specified slot exists in the inventory.
 	 *
 	 * @param int $slot
+	 *
 	 * @return bool
 	 */
 	public function slotExists(int $slot) : bool;
+
+	/**
+	 * @return null|\Closure
+	 */
+	public function getSlotChangeListener() : ?\Closure;
+
+	/**
+	 * @param \Closure|null $eventProcessor
+	 */
+	public function setSlotChangeListener(?\Closure $eventProcessor) : void;
 }

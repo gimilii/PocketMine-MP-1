@@ -28,6 +28,9 @@ use pocketmine\inventory\CraftingRecipe;
 use pocketmine\item\Item;
 use pocketmine\network\mcpe\protocol\ContainerClosePacket;
 use pocketmine\network\mcpe\protocol\types\ContainerIds;
+use function array_pop;
+use function count;
+use function intdiv;
 
 class CraftingTransaction extends InventoryTransaction{
 	/** @var CraftingRecipe|null */
@@ -47,6 +50,7 @@ class CraftingTransaction extends InventoryTransaction{
 	 * @param int    $iterations
 	 *
 	 * @return int
+	 * @throws TransactionValidationException
 	 */
 	protected function matchRecipeItems(array $txItems, array $recipeItems, bool $wildcards, int $iterations = 0) : int{
 		if(empty($recipeItems)){
@@ -69,7 +73,7 @@ class CraftingTransaction extends InventoryTransaction{
 
 			$haveCount = 0;
 			foreach($txItems as $j => $txItem){
-				if($txItem->equals($recipeItem, !$wildcards or !$recipeItem->hasAnyDamageValue(), !$wildcards or $recipeItem->hasCompoundTag())){
+				if($txItem->equals($recipeItem, !$wildcards or !$recipeItem->hasAnyDamageValue(), !$wildcards or $recipeItem->hasNamedTag())){
 					$haveCount += $txItem->getCount();
 					unset($txItems[$j]);
 				}
@@ -134,7 +138,8 @@ class CraftingTransaction extends InventoryTransaction{
 	}
 
 	protected function callExecuteEvent() : bool{
-		$this->source->getServer()->getPluginManager()->callEvent($ev = new CraftItemEvent($this, $this->recipe, $this->repetitions, $this->inputs, $this->outputs));
+		$ev = new CraftItemEvent($this, $this->recipe, $this->repetitions, $this->inputs, $this->outputs);
+		$ev->call();
 		return !$ev->isCancelled();
 	}
 
@@ -149,7 +154,7 @@ class CraftingTransaction extends InventoryTransaction{
 		 */
 		$pk = new ContainerClosePacket();
 		$pk->windowId = ContainerIds::NONE;
-		$this->source->dataPacket($pk);
+		$this->source->sendDataPacket($pk);
 	}
 
 	public function execute() : bool{

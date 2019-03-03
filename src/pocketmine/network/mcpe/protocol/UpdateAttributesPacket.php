@@ -27,9 +27,10 @@ namespace pocketmine\network\mcpe\protocol;
 
 
 use pocketmine\entity\Attribute;
-use pocketmine\network\mcpe\NetworkSession;
+use pocketmine\network\mcpe\handler\SessionHandler;
+use function array_values;
 
-class UpdateAttributesPacket extends DataPacket{
+class UpdateAttributesPacket extends DataPacket implements ClientboundPacket{
 	public const NETWORK_ID = ProtocolInfo::UPDATE_ATTRIBUTES_PACKET;
 
 	/** @var int */
@@ -37,18 +38,17 @@ class UpdateAttributesPacket extends DataPacket{
 	/** @var Attribute[] */
 	public $entries = [];
 
-	protected function decodePayload(){
+	protected function decodePayload() : void{
 		$this->entityRuntimeId = $this->getEntityRuntimeId();
 		$this->entries = $this->getAttributeList();
 	}
 
-	protected function encodePayload(){
+	protected function encodePayload() : void{
 		$this->putEntityRuntimeId($this->entityRuntimeId);
-		$this->putAttributeList(...$this->entries);
+		$this->putAttributeList(...array_values($this->entries));
 	}
 
-	public function handle(NetworkSession $session) : bool{
-		return $session->handleUpdateAttributes($this);
+	public function handle(SessionHandler $handler) : bool{
+		return $handler->handleUpdateAttributes($this);
 	}
-
 }

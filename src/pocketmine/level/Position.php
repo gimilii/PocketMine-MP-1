@@ -24,7 +24,7 @@ declare(strict_types=1);
 namespace pocketmine\level;
 
 use pocketmine\math\Vector3;
-use pocketmine\utils\MainLogger;
+use function assert;
 
 class Position extends Vector3{
 
@@ -37,12 +37,12 @@ class Position extends Vector3{
 	 * @param int   $z
 	 * @param Level $level
 	 */
-	public function __construct($x = 0, $y = 0, $z = 0, Level $level = null){
+	public function __construct($x = 0, $y = 0, $z = 0, ?Level $level = null){
 		parent::__construct($x, $y, $z);
 		$this->setLevel($level);
 	}
 
-	public static function fromObject(Vector3 $pos, Level $level = null){
+	public static function fromObject(Vector3 $pos, ?Level $level = null){
 		return new Position($pos->x, $pos->y, $pos->z, $level);
 	}
 
@@ -63,7 +63,7 @@ class Position extends Vector3{
 	 */
 	public function getLevel(){
 		if($this->level !== null and $this->level->isClosed()){
-			MainLogger::getLogger()->debug("Position was holding a reference to an unloaded Level");
+			\GlobalLogger::get()->debug("Position was holding a reference to an unloaded world");
 			$this->level = null;
 		}
 
@@ -79,9 +79,9 @@ class Position extends Vector3{
 	 *
 	 * @throws \InvalidArgumentException if the specified Level has been closed
 	 */
-	public function setLevel(Level $level = null){
+	public function setLevel(?Level $level){
 		if($level !== null and $level->isClosed()){
-			throw new \InvalidArgumentException("Specified level has been unloaded and cannot be used");
+			throw new \InvalidArgumentException("Specified world has been unloaded and cannot be used");
 		}
 
 		$this->level = $level;
@@ -118,7 +118,7 @@ class Position extends Vector3{
 	}
 
 	public function __toString(){
-		return "Position(level=" . ($this->isValid() ? $this->getLevel()->getName() : "null") . ",x=" . $this->x . ",y=" . $this->y . ",z=" . $this->z . ")";
+		return "Position(level=" . ($this->isValid() ? $this->getLevel()->getDisplayName() : "null") . ",x=" . $this->x . ",y=" . $this->y . ",z=" . $this->z . ")";
 	}
 
 	public function equals(Vector3 $v) : bool{

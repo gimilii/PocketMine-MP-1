@@ -26,9 +26,10 @@ namespace pocketmine\network\mcpe\protocol;
 #include <rules/DataPacket.h>
 
 use pocketmine\item\Item;
-use pocketmine\network\mcpe\NetworkSession;
+use pocketmine\network\mcpe\handler\SessionHandler;
+use function count;
 
-class InventoryContentPacket extends DataPacket{
+class InventoryContentPacket extends DataPacket implements ClientboundPacket{
 	public const NETWORK_ID = ProtocolInfo::INVENTORY_CONTENT_PACKET;
 
 	/** @var int */
@@ -36,7 +37,7 @@ class InventoryContentPacket extends DataPacket{
 	/** @var Item[] */
 	public $items = [];
 
-	protected function decodePayload(){
+	protected function decodePayload() : void{
 		$this->windowId = $this->getUnsignedVarInt();
 		$count = $this->getUnsignedVarInt();
 		for($i = 0; $i < $count; ++$i){
@@ -44,7 +45,7 @@ class InventoryContentPacket extends DataPacket{
 		}
 	}
 
-	protected function encodePayload(){
+	protected function encodePayload() : void{
 		$this->putUnsignedVarInt($this->windowId);
 		$this->putUnsignedVarInt(count($this->items));
 		foreach($this->items as $item){
@@ -52,7 +53,7 @@ class InventoryContentPacket extends DataPacket{
 		}
 	}
 
-	public function handle(NetworkSession $session) : bool{
-		return $session->handleInventoryContent($this);
+	public function handle(SessionHandler $handler) : bool{
+		return $handler->handleInventoryContent($this);
 	}
 }

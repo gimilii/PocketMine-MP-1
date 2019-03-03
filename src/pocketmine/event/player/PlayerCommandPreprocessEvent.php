@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace pocketmine\event\player;
 
 use pocketmine\event\Cancellable;
+use pocketmine\event\CancellableTrait;
 use pocketmine\Player;
 
 /**
@@ -35,6 +36,8 @@ use pocketmine\Player;
  * The message contains a slash at the start
  */
 class PlayerCommandPreprocessEvent extends PlayerEvent implements Cancellable{
+	use CancellableTrait;
+
 	/** @var string */
 	protected $message;
 
@@ -43,7 +46,7 @@ class PlayerCommandPreprocessEvent extends PlayerEvent implements Cancellable{
 	 * @param Player $player
 	 * @param string $message
 	 */
-	public function __construct(Player $player, $message){
+	public function __construct(Player $player, string $message){
 		$this->player = $player;
 		$this->message = $message;
 	}
@@ -58,15 +61,14 @@ class PlayerCommandPreprocessEvent extends PlayerEvent implements Cancellable{
 	/**
 	 * @param string $message
 	 */
-	public function setMessage(string $message){
+	public function setMessage(string $message) : void{
 		$this->message = $message;
 	}
 
 	/**
 	 * @param Player $player
 	 */
-	public function setPlayer(Player $player){
+	public function setPlayer(Player $player) : void{
 		$this->player = $player;
 	}
-
 }

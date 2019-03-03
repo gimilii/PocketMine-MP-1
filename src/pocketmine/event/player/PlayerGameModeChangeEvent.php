@@ -24,12 +24,15 @@ declare(strict_types=1);
 namespace pocketmine\event\player;
 
 use pocketmine\event\Cancellable;
+use pocketmine\event\CancellableTrait;
 use pocketmine\Player;
 
 /**
  * Called when a player has its gamemode changed
  */
 class PlayerGameModeChangeEvent extends PlayerEvent implements Cancellable{
+	use CancellableTrait;
+
 	/** @var int */
 	protected $gamemode;
 
@@ -41,5 +44,4 @@ class PlayerGameModeChangeEvent extends PlayerEvent implements Cancellable{
 	public function getNewGamemode() : int{
 		return $this->gamemode;
 	}
-
 }

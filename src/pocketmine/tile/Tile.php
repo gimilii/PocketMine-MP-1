@@ -33,12 +33,9 @@ use pocketmine\level\Level;
 use pocketmine\level\Position;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\CompoundTag;
-use pocketmine\nbt\tag\IntTag;
-use pocketmine\nbt\tag\StringTag;
-use pocketmine\Player;
-use pocketmine\Server;
 use pocketmine\timings\Timings;
 use pocketmine\timings\TimingsHandler;
+use function get_class;
 
 abstract class Tile extends Position{
 
@@ -47,35 +44,10 @@ abstract class Tile extends Position{
 	public const TAG_Y = "y";
 	public const TAG_Z = "z";
 
-	public const BANNER = "Banner";
-	public const BED = "Bed";
-	public const BREWING_STAND = "BrewingStand";
-	public const CHEST = "Chest";
-	public const ENCHANT_TABLE = "EnchantTable";
-	public const ENDER_CHEST = "EnderChest";
-	public const FLOWER_POT = "FlowerPot";
-	public const FURNACE = "Furnace";
-	public const ITEM_FRAME = "ItemFrame";
-	public const MOB_SPAWNER = "MobSpawner";
-	public const SIGN = "Sign";
-	public const SKULL = "Skull";
-
-	/** @var int */
-	public static $tileCount = 1;
-
-	/** @var string[] classes that extend Tile */
-	private static $knownTiles = [];
-	/** @var string[][] */
-	private static $saveNames = [];
-
 	/** @var string */
-	public $name;
-	/** @var int */
-	public $id;
+	public $name = "";
 	/** @var bool */
 	public $closed = false;
-	/** @var Server */
-	protected $server;
 	/** @var TimingsHandler */
 	protected $timings;
 
@@ -152,29 +124,18 @@ abstract class Tile extends Position{
 		return current(self::$saveNames[static::class]);
 	}
 
-	public function __construct(Level $level, CompoundTag $nbt){
+	public function __construct(Level $level, Vector3 $pos){
 		$this->timings = Timings::getTileEntityTimings($this);
-
-		$this->server = $level->getServer();
-		$this->name = "";
-		$this->id = Tile::$tileCount++;
-
-		parent::__construct($nbt->getInt(self::TAG_X), $nbt->getInt(self::TAG_Y), $nbt->getInt(self::TAG_Z), $level);
-		$this->readSaveData($nbt);
-
-		$this->getLevel()->addTile($this);
-	}
-
-	public function getId() : int{
-		return $this->id;
+		parent::__construct($pos->getFloorX(), $pos->getFloorY(), $pos->getFloorZ(), $level);
 	}
 
 	/**
+	 * @internal
 	 * Reads additional data from the CompoundTag on tile creation.
 	 *
 	 * @param CompoundTag $nbt
 	 */
-	abstract protected function readSaveData(CompoundTag $nbt) : void;
+	abstract public function readSaveData(CompoundTag $nbt) : void;
 
 	/**
 	 * Writes additional save data to a CompoundTag, not including generic things like ID and coordinates.
@@ -183,12 +144,15 @@ abstract class Tile extends Position{
 	 */
 	abstract protected function writeSaveData(CompoundTag $nbt) : void;
 
-	public function saveNBT(CompoundTag $nbt) : void{
-		$nbt->setString(self::TAG_ID, static::getSaveId());
+	public function saveNBT() : CompoundTag{
+		$nbt = new CompoundTag();
+		$nbt->setString(self::TAG_ID, TileFactory::getSaveId(get_class($this)));
 		$nbt->setInt(self::TAG_X, $this->x);
 		$nbt->setInt(self::TAG_Y, $this->y);
 		$nbt->setInt(self::TAG_Z, $this->z);
 		$this->writeSaveData($nbt);
+
+		return $nbt;
 	}
 
 	public function getCleanedNBT() : ?CompoundTag{
@@ -197,48 +161,16 @@ abstract class Tile extends Position{
 	}
 
 	/**
-	 * Creates and returns a CompoundTag containing the necessary information to spawn a tile of this type.
+	 * @internal
 	 *
-	 * @param Vector3     $pos
-	 * @param int|null    $face
-	 * @param Item|null   $item
-	 * @param Player|null $player
+	 * @param Item $item
 	 *
-	 * @return CompoundTag
+	 * @throws \RuntimeException
 	 */
-	public static function createNBT(Vector3 $pos, ?int $face = null, ?Item $item = null, ?Player $player = null) : CompoundTag{
-		$nbt = new CompoundTag("", [
-			new StringTag(self::TAG_ID, static::getSaveId()),
-			new IntTag(self::TAG_X, (int) $pos->x),
-			new IntTag(self::TAG_Y, (int) $pos->y),
-			new IntTag(self::TAG_Z, (int) $pos->z)
-		]);
-
-		static::createAdditionalNBT($nbt, $pos, $face, $item, $player);
-
-		if($item !== null){
-			$customBlockData = $item->getCustomBlockData();
-			if($customBlockData !== null){
-				foreach($customBlockData as $customBlockDataTag){
-					$nbt->setTag(clone $customBlockDataTag);
-				}
-			}
+	public function copyDataFromItem(Item $item) : void{
+		if($item->hasCustomBlockData()){ //TODO: check item root tag (MCPE doesn't use BlockEntityTag)
+			$this->readSaveData($item->getCustomBlockData());
 		}
-
-		return $nbt;
-	}
-
-	/**
-	 * Called by createNBT() to allow descendent classes to add their own base NBT using the parameters provided.
-	 *
-	 * @param CompoundTag $nbt
-	 * @param Vector3     $pos
-	 * @param int|null    $face
-	 * @param Item|null   $item
-	 * @param Player|null $player
-	 */
-	protected static function createAdditionalNBT(CompoundTag $nbt, Vector3 $pos, ?int $face = null, ?Item $item = null, ?Player $player = null) : void{
-
 	}
 
 	/**
@@ -256,7 +188,10 @@ abstract class Tile extends Position{
 	}
 
 	final public function scheduleUpdate() : void{
-		$this->level->updateTiles[$this->id] = $this;
+		if($this->closed){
+			throw new \InvalidStateException("Cannot schedule update on garbage tile " . get_class($this));
+		}
+		$this->level->updateTiles[Level::blockHash($this->x, $this->y, $this->z)] = $this;
 	}
 
 	public function isClosed() : bool{
@@ -265,6 +200,21 @@ abstract class Tile extends Position{
 
 	public function __destruct(){
 		$this->close();
+	}
+
+	/**
+	 * Called when the tile's block is destroyed.
+	 */
+	final public function onBlockDestroyed() : void{
+		$this->onBlockDestroyedHook();
+		$this->close();
+	}
+
+	/**
+	 * Override this method to do actions you need to do when this tile is destroyed due to block being broken.
+	 */
+	protected function onBlockDestroyedHook() : void{
+
 	}
 
 	public function close() : void{
@@ -281,5 +231,4 @@ abstract class Tile extends Position{
 	public function getName() : string{
 		return $this->name;
 	}
-
 }

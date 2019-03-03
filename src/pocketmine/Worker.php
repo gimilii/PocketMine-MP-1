@@ -28,7 +28,7 @@ namespace pocketmine;
  */
 abstract class Worker extends \Worker{
 
-	/** @var \ClassLoader */
+	/** @var \ClassLoader|null */
 	protected $classLoader;
 	/** @var string|null */
 	protected $composerAutoloaderPath;
@@ -39,7 +39,7 @@ abstract class Worker extends \Worker{
 		return $this->classLoader;
 	}
 
-	public function setClassLoader(\ClassLoader $loader = null){
+	public function setClassLoader(?\ClassLoader $loader = null) : void{
 		$this->composerAutoloaderPath = \pocketmine\COMPOSER_AUTOLOADER_PATH;
 
 		if($loader === null){
@@ -55,7 +55,7 @@ abstract class Worker extends \Worker{
 	 * If you do not do this, you will not be able to use new classes that were not loaded when the thread was started
 	 * (unless you are using a custom autoloader).
 	 */
-	public function registerClassLoader(){
+	public function registerClassLoader() : void{
 		if($this->composerAutoloaderPath !== null){
 			require $this->composerAutoloaderPath;
 		}
@@ -64,35 +64,25 @@ abstract class Worker extends \Worker{
 		}
 	}
 
-	public function start(?int $options = \PTHREADS_INHERIT_ALL){
+	public function start(?int $options = \PTHREADS_INHERIT_ALL) : bool{
 		ThreadManager::getInstance()->add($this);
 
-		if(!$this->isRunning() and !$this->isJoined() and !$this->isTerminated()){
-			if($this->getClassLoader() === null){
-				$this->setClassLoader();
-			}
-			return parent::start($options);
+		if($this->getClassLoader() === null){
+			$this->setClassLoader();
 		}
-
-		return false;
+		return parent::start($options);
 	}
 
 	/**
 	 * Stops the thread using the best way possible. Try to stop it yourself before calling this.
 	 */
-	public function quit(){
+	public function quit() : void{
 		$this->isKilled = true;
 
-		$this->notify();
-
 		if($this->isRunning()){
-			$this->shutdown();
+			while($this->unstack() !== null);
 			$this->notify();
-			$this->unstack();
-		}elseif(!$this->isJoined()){
-			if(!$this->isTerminated()){
-				$this->join();
-			}
+			$this->shutdown();
 		}
 
 		ThreadManager::getInstance()->remove($this);

@@ -23,50 +23,33 @@ declare(strict_types=1);
 
 namespace pocketmine\level;
 
+use pocketmine\block\Block;
 use pocketmine\level\format\Chunk;
 
 interface ChunkManager{
-	/**
-	 * Gets the raw block id.
-	 *
-	 * @param int $x
-	 * @param int $y
-	 * @param int $z
-	 *
-	 * @return int 0-255
-	 */
-	public function getBlockIdAt(int $x, int $y, int $z) : int;
 
 	/**
-	 * Sets the raw block id.
+	 * Returns a Block object representing the block state at the given coordinates.
 	 *
 	 * @param int $x
 	 * @param int $y
 	 * @param int $z
-	 * @param int $id 0-255
+	 *
+	 * @return Block
 	 */
-	public function setBlockIdAt(int $x, int $y, int $z, int $id);
+	public function getBlockAt(int $x, int $y, int $z) : Block;
 
 	/**
-	 * Gets the raw block metadata
+	 * Sets the block at the given coordinates to the block state specified.
 	 *
-	 * @param int $x
-	 * @param int $y
-	 * @param int $z
+	 * @param int   $x
+	 * @param int   $y
+	 * @param int   $z
+	 * @param Block $block
 	 *
-	 * @return int 0-15
+	 * @return bool TODO: remove
 	 */
-	public function getBlockDataAt(int $x, int $y, int $z) : int;
-
-	/**
-	 * Sets the raw block metadata.
-	 *
-	 * @param int $x
-	 * @param int $y
-	 * @param int $z
-	 * @param int $data 0-15
-	 */
-	public function setBlockDataAt(int $x, int $y, int $z, int $data);
+	public function setBlockAt(int $x, int $y, int $z, Block $block) : bool;
 
 	/**
 	 * Returns the raw block light level
@@ -87,7 +70,7 @@ interface ChunkManager{
 	 * @param int $z
 	 * @param int $level
 	 */
-	public function setBlockLightAt(int $x, int $y, int $z, int $level);
+	public function setBlockLightAt(int $x, int $y, int $z, int $level) : void;
 
 	/**
 	 * Returns the highest amount of sky light can reach the specified coordinates.
@@ -108,7 +91,7 @@ interface ChunkManager{
 	 * @param int $z
 	 * @param int $level
 	 */
-	public function setBlockSkyLightAt(int $x, int $y, int $z, int $level);
+	public function setBlockSkyLightAt(int $x, int $y, int $z, int $level) : void;
 
 	/**
 	 * @param int $chunkX
@@ -116,21 +99,14 @@ interface ChunkManager{
 	 *
 	 * @return Chunk|null
 	 */
-	public function getChunk(int $chunkX, int $chunkZ);
+	public function getChunk(int $chunkX, int $chunkZ) : ?Chunk;
 
 	/**
 	 * @param int        $chunkX
 	 * @param int        $chunkZ
 	 * @param Chunk|null $chunk
 	 */
-	public function setChunk(int $chunkX, int $chunkZ, Chunk $chunk = null);
-
-	/**
-	 * Gets the level seed
-	 *
-	 * @return int
-	 */
-	public function getSeed() : int;
+	public function setChunk(int $chunkX, int $chunkZ, ?Chunk $chunk) : void;
 
 	/**
 	 * Returns the height of the world

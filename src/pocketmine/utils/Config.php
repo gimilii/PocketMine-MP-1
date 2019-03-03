@@ -23,9 +23,36 @@ declare(strict_types=1);
 
 namespace pocketmine\utils;
 
-use pocketmine\scheduler\FileWriteTask;
-use pocketmine\Server;
-
+use function array_change_key_case;
+use function array_keys;
+use function array_pop;
+use function array_shift;
+use function basename;
+use function count;
+use function date;
+use function explode;
+use function file_exists;
+use function file_get_contents;
+use function file_put_contents;
+use function implode;
+use function is_array;
+use function is_bool;
+use function json_decode;
+use function json_encode;
+use function preg_match_all;
+use function preg_replace;
+use function serialize;
+use function str_replace;
+use function strlen;
+use function strtolower;
+use function substr;
+use function trim;
+use function unserialize;
+use function yaml_emit;
+use function yaml_parse;
+use const CASE_LOWER;
+use const JSON_BIGINT_AS_STRING;
+use const JSON_PRETTY_PRINT;
 
 /**
  * Config Class for simple config manipulation of multiple formats.
@@ -48,8 +75,6 @@ class Config{
 
 	/** @var string */
 	private $file;
-	/** @var bool */
-	private $correct = false;
 	/** @var int */
 	private $type = Config::DETECT;
 	/** @var int */
@@ -77,23 +102,20 @@ class Config{
 	];
 
 	/**
-	 * @param string $file     Path of the file to be loaded
-	 * @param int    $type     Config type to load, -1 by default (detect)
-	 * @param array  $default  Array with the default values that will be written to the file if it did not exist
-	 * @param null   &$correct Sets correct to true if everything has been loaded correctly
+	 * @param string $file Path of the file to be loaded
+	 * @param int    $type Config type to load, -1 by default (detect)
+	 * @param array  $default Array with the default values that will be written to the file if it did not exist
 	 */
-	public function __construct(string $file, int $type = Config::DETECT, array $default = [], &$correct = null){
+	public function __construct(string $file, int $type = Config::DETECT, array $default = []){
 		$this->load($file, $type, $default);
-		$correct = $this->correct;
 	}
 
 	/**
 	 * Removes all the changes in memory and loads the file again
 	 */
-	public function reload(){
+	public function reload() : void{
 		$this->config = [];
 		$this->nestedCache = [];
-		$this->correct = false;
 		$this->load($this->file, $this->type);
 	}
 
@@ -111,18 +133,18 @@ class Config{
 	 * @return string
 	 */
 	public static function fixYAMLIndexes(string $str) : string{
-		return preg_replace("#^([ ]*)([a-zA-Z_]{1}[ ]*)\\:$#m", "$1\"$2\":", $str);
+		return preg_replace("#^( *)(y|Y|yes|Yes|YES|n|N|no|No|NO|true|True|TRUE|false|False|FALSE|on|On|ON|off|Off|OFF)( *)\:#m", "$1\"$2\"$3:", $str);
 	}
 
 	/**
-	 * @param       $file
-	 * @param int   $type
-	 * @param array $default
+	 * @param string $file
+	 * @param int    $type
+	 * @param array  $default
 	 *
-	 * @return bool
+	 * @throws \InvalidArgumentException if config type could not be auto-detected
+	 * @throws \InvalidStateException if config type is invalid
 	 */
-	public function load(string $file, int $type = Config::DETECT, array $default = []) : bool{
-		$this->correct = true;
+	private function load(string $file, int $type = Config::DETECT, array $default = []) : void{
 		$this->file = $file;
 
 		$this->type = $type;
@@ -132,7 +154,7 @@ class Config{
 			if(isset(Config::$formats[$extension])){
 				$this->type = Config::$formats[$extension];
 			}else{
-				$this->correct = false;
+				throw new \InvalidArgumentException("Cannot detect config type of " . $this->file);
 			}
 		}
 
@@ -140,107 +162,82 @@ class Config{
 			$this->config = $default;
 			$this->save();
 		}else{
-			if($this->correct){
-				$content = file_get_contents($this->file);
-				switch($this->type){
-					case Config::PROPERTIES:
-					case Config::CNF:
-						$this->parseProperties($content);
-						break;
-					case Config::JSON:
-						$this->config = json_decode($content, true);
-						break;
-					case Config::YAML:
-						$content = self::fixYAMLIndexes($content);
-						$this->config = yaml_parse($content);
-						break;
-					case Config::SERIALIZED:
-						$this->config = unserialize($content);
-						break;
-					case Config::ENUM:
-						$this->parseList($content);
-						break;
-					default:
-						$this->correct = false;
-
-						return false;
-				}
-				if(!is_array($this->config)){
-					$this->config = $default;
-				}
-				if($this->fillDefaults($default, $this->config) > 0){
-					$this->save();
-				}
-			}else{
-				return false;
+			$content = file_get_contents($this->file);
+			switch($this->type){
+				case Config::PROPERTIES:
+					$this->parseProperties($content);
+					break;
+				case Config::JSON:
+					$this->config = json_decode($content, true);
+					break;
+				case Config::YAML:
+					$content = self::fixYAMLIndexes($content);
+					$this->config = yaml_parse($content);
+					break;
+				case Config::SERIALIZED:
+					$this->config = unserialize($content);
+					break;
+				case Config::ENUM:
+					$this->parseList($content);
+					break;
+				default:
+					throw new \InvalidStateException("Config type is unknown");
+			}
+			if(!is_array($this->config)){
+				$this->config = $default;
+			}
+			if($this->fillDefaults($default, $this->config) > 0){
+				$this->save();
 			}
 		}
-
-		return true;
 	}
 
 	/**
-	 * @return bool
-	 */
-	public function check() : bool{
-		return $this->correct;
-	}
-
-	/**
-	 * @param bool $async
+	 * Returns the path of the config.
 	 *
-	 * @return bool
+	 * @return string
 	 */
-	public function save(bool $async = false) : bool{
-		if($this->correct){
-			try{
-				$content = null;
-				switch($this->type){
-					case Config::PROPERTIES:
-					case Config::CNF:
-						$content = $this->writeProperties();
-						break;
-					case Config::JSON:
-						$content = json_encode($this->config, $this->jsonOptions);
-						break;
-					case Config::YAML:
-						$content = yaml_emit($this->config, YAML_UTF8_ENCODING);
-						break;
-					case Config::SERIALIZED:
-						$content = serialize($this->config);
-						break;
-					case Config::ENUM:
-						$content = implode("\r\n", array_keys($this->config));
-						break;
-					default:
-						throw new \InvalidStateException("Config type is unknown, has not been set or not detected");
-				}
+	public function getPath() : string{
+		return $this->file;
+	}
 
-				if($async){
-					Server::getInstance()->getAsyncPool()->submitTask(new FileWriteTask($this->file, $content));
-				}else{
-					file_put_contents($this->file, $content);
-				}
-			}catch(\Throwable $e){
-				$logger = Server::getInstance()->getLogger();
-				$logger->critical("Could not save Config " . $this->file . ": " . $e->getMessage());
-				if(\pocketmine\DEBUG > 1){
-					$logger->logException($e);
-				}
-			}
-
-			$this->changed = false;
-
-			return true;
-		}else{
-			return false;
+	/**
+	 * Flushes the config to disk in the appropriate format.
+	 *
+	 * @throws \InvalidStateException if config type is not valid
+	 */
+	public function save() : void{
+		$content = null;
+		switch($this->type){
+			case Config::PROPERTIES:
+				$content = $this->writeProperties();
+				break;
+			case Config::JSON:
+				$content = json_encode($this->config, $this->jsonOptions);
+				break;
+			case Config::YAML:
+				$content = yaml_emit($this->config, YAML_UTF8_ENCODING);
+				break;
+			case Config::SERIALIZED:
+				$content = serialize($this->config);
+				break;
+			case Config::ENUM:
+				$content = implode("\r\n", array_keys($this->config));
+				break;
+			default:
+				throw new \InvalidStateException("Config type is unknown, has not been set or not detected");
 		}
+
+		file_put_contents($this->file, $content);
+
+		$this->changed = false;
 	}
 
 	/**
 	 * Sets the options for the JSON encoding when saving
 	 *
 	 * @param int $options
+	 *
 	 * @return Config $this
 	 * @throws \RuntimeException if the Config is not in JSON
 	 * @see json_encode
@@ -259,6 +256,7 @@ class Config{
 	 * Enables the given option in addition to the currently set JSON options
 	 *
 	 * @param int $option
+	 *
 	 * @return Config $this
 	 * @throws \RuntimeException if the Config is not in JSON
 	 * @see json_encode
@@ -277,6 +275,7 @@ class Config{
 	 * Disables the given option for the JSON encoding when saving
 	 *
 	 * @param int $option
+	 *
 	 * @return Config $this
 	 * @throws \RuntimeException if the Config is not in JSON
 	 * @see json_encode
@@ -306,7 +305,7 @@ class Config{
 	}
 
 	/**
-	 * @param $k
+	 * @param string $k
 	 *
 	 * @return bool|mixed
 	 */
@@ -315,15 +314,15 @@ class Config{
 	}
 
 	/**
-	 * @param $k
-	 * @param $v
+	 * @param string $k
+	 * @param mixed  $v
 	 */
 	public function __set($k, $v){
 		$this->set($k, $v);
 	}
 
 	/**
-	 * @param $k
+	 * @param string $k
 	 *
 	 * @return bool
 	 */
@@ -332,17 +331,17 @@ class Config{
 	}
 
 	/**
-	 * @param $k
+	 * @param string $k
 	 */
 	public function __unset($k){
 		$this->remove($k);
 	}
 
 	/**
-	 * @param $key
-	 * @param $value
+	 * @param string $key
+	 * @param mixed  $value
 	 */
-	public function setNested($key, $value){
+	public function setNested($key, $value) : void{
 		$vars = explode(".", $key);
 		$base = array_shift($vars);
 
@@ -366,8 +365,8 @@ class Config{
 	}
 
 	/**
-	 * @param       $key
-	 * @param mixed $default
+	 * @param string $key
+	 * @param mixed  $default
 	 *
 	 * @return mixed
 	 */
@@ -418,20 +417,20 @@ class Config{
 	}
 
 	/**
-	 * @param       $k
-	 * @param mixed $default
+	 * @param string $k
+	 * @param mixed  $default
 	 *
 	 * @return bool|mixed
 	 */
 	public function get($k, $default = false){
-		return ($this->correct and isset($this->config[$k])) ? $this->config[$k] : $default;
+		return $this->config[$k] ?? $default;
 	}
 
 	/**
 	 * @param string $k key to be set
 	 * @param mixed  $v value to set key
 	 */
-	public function set($k, $v = true){
+	public function set($k, $v = true) : void{
 		$this->config[$k] = $v;
 		$this->changed = true;
 		foreach($this->nestedCache as $nestedKey => $nvalue){
@@ -444,14 +443,14 @@ class Config{
 	/**
 	 * @param array $v
 	 */
-	public function setAll(array $v){
+	public function setAll(array $v) : void{
 		$this->config = $v;
 		$this->changed = true;
 	}
 
 	/**
-	 * @param      $k
-	 * @param bool $lowercase If set, searches Config in single-case / lowercase.
+	 * @param string $k
+	 * @param bool   $lowercase If set, searches Config in single-case / lowercase.
 	 *
 	 * @return bool
 	 */
@@ -466,9 +465,9 @@ class Config{
 	}
 
 	/**
-	 * @param $k
+	 * @param string $k
 	 */
-	public function remove($k){
+	public function remove($k) : void{
 		unset($this->config[$k]);
 		$this->changed = true;
 	}
@@ -485,7 +484,7 @@ class Config{
 	/**
 	 * @param array $defaults
 	 */
-	public function setDefaults(array $defaults){
+	public function setDefaults(array $defaults) : void{
 		$this->fillDefaults($defaults, $this->config);
 	}
 
@@ -519,7 +518,7 @@ class Config{
 	/**
 	 * @param string $content
 	 */
-	private function parseList(string $content){
+	private function parseList(string $content) : void{
 		foreach(explode("\n", trim(str_replace("\r\n", "\n", $content))) as $v){
 			$v = trim($v);
 			if($v == ""){
@@ -549,8 +548,8 @@ class Config{
 	/**
 	 * @param string $content
 	 */
-	private function parseProperties(string $content){
-		if(preg_match_all('/([a-zA-Z0-9\-_\.]*)=([^\r\n]*)/u', $content, $matches) > 0){ //false or 0 matches
+	private function parseProperties(string $content) : void{
+		if(preg_match_all('/^\s*([a-zA-Z0-9\-_\.]+)[ \t]*=([^\r\n]*)/um', $content, $matches) > 0){ //false or 0 matches
 			foreach($matches[1] as $i => $k){
 				$v = trim($matches[2][$i]);
 				switch(strtolower($v)){
@@ -566,11 +565,10 @@ class Config{
 						break;
 				}
 				if(isset($this->config[$k])){
-					MainLogger::getLogger()->debug("[Config] Repeated property " . $k . " on file " . $this->file);
+					\GlobalLogger::get()->debug("[Config] Repeated property " . $k . " on file " . $this->file);
 				}
 				$this->config[$k] = $v;
 			}
 		}
 	}
-
 }

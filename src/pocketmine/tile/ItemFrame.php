@@ -25,8 +25,14 @@ namespace pocketmine\tile;
 
 use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
+use pocketmine\level\Level;
+use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\CompoundTag;
 
+/**
+ * @deprecated
+ * @see \pocketmine\block\ItemFrame
+ */
 class ItemFrame extends Spawnable{
 	public const TAG_ITEM_ROTATION = "ItemRotation";
 	public const TAG_ITEM_DROP_CHANCE = "ItemDropChance";
@@ -35,18 +41,21 @@ class ItemFrame extends Spawnable{
 	/** @var Item */
 	private $item;
 	/** @var int */
-	private $itemRotation;
+	private $itemRotation = 0;
 	/** @var float */
-	private $itemDropChance;
+	private $itemDropChance = 1.0;
 
-	protected function readSaveData(CompoundTag $nbt) : void{
+	public function __construct(Level $level, Vector3 $pos){
+		$this->item = ItemFactory::air();
+		parent::__construct($level, $pos);
+	}
+
+	public function readSaveData(CompoundTag $nbt) : void{
 		if(($itemTag = $nbt->getCompoundTag(self::TAG_ITEM)) !== null){
 			$this->item = Item::nbtDeserialize($itemTag);
-		}else{
-			$this->item = ItemFactory::get(Item::AIR, 0, 0);
 		}
-		$this->itemRotation = $nbt->getByte(self::TAG_ITEM_ROTATION, 0, true);
-		$this->itemDropChance = $nbt->getFloat(self::TAG_ITEM_DROP_CHANCE, 1.0, true);
+		$this->itemRotation = $nbt->getByte(self::TAG_ITEM_ROTATION, $this->itemRotation, true);
+		$this->itemDropChance = $nbt->getFloat(self::TAG_ITEM_DROP_CHANCE, $this->itemDropChance, true);
 	}
 
 	protected function writeSaveData(CompoundTag $nbt) : void{
@@ -63,11 +72,11 @@ class ItemFrame extends Spawnable{
 		return clone $this->item;
 	}
 
-	public function setItem(Item $item = null){
+	public function setItem(?Item $item) : void{
 		if($item !== null and !$item->isNull()){
 			$this->item = clone $item;
 		}else{
-			$this->item = ItemFactory::get(Item::AIR, 0, 0);
+			$this->item = ItemFactory::air();
 		}
 		$this->onChanged();
 	}
@@ -76,7 +85,7 @@ class ItemFrame extends Spawnable{
 		return $this->itemRotation;
 	}
 
-	public function setItemRotation(int $rotation){
+	public function setItemRotation(int $rotation) : void{
 		$this->itemRotation = $rotation;
 		$this->onChanged();
 	}
@@ -85,7 +94,7 @@ class ItemFrame extends Spawnable{
 		return $this->itemDropChance;
 	}
 
-	public function setItemDropChance(float $chance){
+	public function setItemDropChance(float $chance) : void{
 		$this->itemDropChance = $chance;
 		$this->onChanged();
 	}

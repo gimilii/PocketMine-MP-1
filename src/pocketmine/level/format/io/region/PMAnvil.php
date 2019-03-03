@@ -26,38 +26,40 @@ namespace pocketmine\level\format\io\region;
 use pocketmine\level\format\SubChunk;
 use pocketmine\nbt\tag\ByteArrayTag;
 use pocketmine\nbt\tag\CompoundTag;
+use function str_repeat;
 
 /**
  * This format is exactly the same as the PC Anvil format, with the only difference being that the stored data order
  * is XZY instead of YZX for more performance loading and saving worlds.
  */
-class PMAnvil extends Anvil{
-
-	public const REGION_FILE_EXTENSION = "mcapm";
+class PMAnvil extends RegionLevelProvider{
+	use LegacyAnvilChunkTrait;
 
 	protected function serializeSubChunk(SubChunk $subChunk) : CompoundTag{
 		return new CompoundTag("", [
 			new ByteArrayTag("Blocks",     $subChunk->getBlockIdArray()),
 			new ByteArrayTag("Data",       $subChunk->getBlockDataArray()),
-			new ByteArrayTag("SkyLight",   $subChunk->getBlockSkyLightArray()),
-			new ByteArrayTag("BlockLight", $subChunk->getBlockLightArray())
+			new ByteArrayTag("SkyLight",   str_repeat("\x00", 2048)),
+			new ByteArrayTag("BlockLight", str_repeat("\x00", 2048))
 		]);
 	}
 
 	protected function deserializeSubChunk(CompoundTag $subChunk) : SubChunk{
 		return new SubChunk(
 			$subChunk->getByteArray("Blocks"),
-			$subChunk->getByteArray("Data"),
-			$subChunk->getByteArray("SkyLight"),
-			$subChunk->getByteArray("BlockLight")
+			$subChunk->getByteArray("Data")
 		);
 	}
 
-	public static function getProviderName() : string{
-		return "pmanvil";
+	protected static function getRegionFileExtension() : string{
+		return "mcapm";
 	}
 
-	public static function getPcWorldFormatVersion() : int{
+	protected static function getPcWorldFormatVersion() : int{
 		return -1; //Not a PC format, only PocketMine-MP
+	}
+
+	public function getWorldHeight() : int{
+		return 256;
 	}
 }

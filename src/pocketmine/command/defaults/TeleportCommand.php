@@ -30,6 +30,10 @@ use pocketmine\lang\TranslationContainer;
 use pocketmine\math\Vector3;
 use pocketmine\Player;
 use pocketmine\utils\TextFormat;
+use function array_filter;
+use function array_values;
+use function count;
+use function round;
 
 class TeleportCommand extends VanillaCommand{
 
@@ -49,7 +53,7 @@ class TeleportCommand extends VanillaCommand{
 		}
 
 		$args = array_values(array_filter($args, function($arg){
-			return strlen($arg) > 0;
+			return $arg !== "";
 		}));
 		if(count($args) < 1 or count($args) > 6){
 			throw new InvalidCommandSyntaxException();

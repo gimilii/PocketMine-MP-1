@@ -26,12 +26,20 @@ declare(strict_types=1);
  */
 namespace pocketmine\network\upnp;
 
+use pocketmine\utils\Internet;
 use pocketmine\utils\Utils;
+use function class_exists;
+use function is_object;
 
 abstract class UPnP{
 
+	/**
+	 * @param int $port
+	 *
+	 * @throws \RuntimeException
+	 */
 	public static function PortForward(int $port) : void{
-		if(!Utils::$online){
+		if(!Internet::$online){
 			throw new \RuntimeException("Server is offline");
 		}
 		if(Utils::getOS() !== "win"){
@@ -41,37 +49,44 @@ abstract class UPnP{
 			throw new \RuntimeException("UPnP requires the com_dotnet extension");
 		}
 
-		$myLocalIP = gethostbyname(trim(`hostname`));
+		$myLocalIP = Internet::getInternalIP();
 
 		/** @noinspection PhpUndefinedClassInspection */
 		$com = new \COM("HNetCfg.NATUPnP");
 		/** @noinspection PhpUndefinedFieldInspection */
+
 		if($com === false or !is_object($com->StaticPortMappingCollection)){
-			throw new \RuntimeException("Failed to portforward (unsupported?)");
+			throw new \RuntimeException("Failed to portforward using UPnP. Ensure that network discovery is enabled in Control Panel.");
 		}
 
-		/** @noinspection PhpUndefinedFieldInspection */
-		$com->StaticPortMappingCollection->Add($port, "UDP", $port, $myLocalIP, true, "PocketMine-MP");
+		try{
+			/** @noinspection PhpUndefinedFieldInspection */
+			$com->StaticPortMappingCollection->Add($port, "UDP", $port, $myLocalIP, true, "PocketMine-MP");
+		}catch(\com_exception $e){
+			throw new \RuntimeException($e->getMessage(), 0, $e);
+		}
 	}
 
 	public static function RemovePortForward(int $port) : bool{
-		if(!Utils::$online){
+		if(!Internet::$online){
 			return false;
 		}
 		if(Utils::getOS() != "win" or !class_exists("COM")){
 			return false;
 		}
 
+		/** @noinspection PhpUndefinedClassInspection */
+		$com = new \COM("HNetCfg.NATUPnP");
+		/** @noinspection PhpUndefinedFieldInspection */
+		if($com === false or !is_object($com->StaticPortMappingCollection)){
+			return false;
+		}
+
 		try{
-			/** @noinspection PhpUndefinedClassInspection */
-			$com = new \COM("HNetCfg.NATUPnP");
-			/** @noinspection PhpUndefinedFieldInspection */
-			if($com === false or !is_object($com->StaticPortMappingCollection)){
-				return false;
-			}
 			/** @noinspection PhpUndefinedFieldInspection */
 			$com->StaticPortMappingCollection->Remove($port, "UDP");
-		}catch(\Throwable $e){
+		}catch(\com_exception $e){
+			//TODO: should this really be silenced?
 			return false;
 		}
 

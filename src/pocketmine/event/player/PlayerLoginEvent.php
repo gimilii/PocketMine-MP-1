@@ -24,12 +24,17 @@ declare(strict_types=1);
 namespace pocketmine\event\player;
 
 use pocketmine\event\Cancellable;
+use pocketmine\event\CancellableTrait;
 use pocketmine\Player;
 
 /**
- * Called when a player joins, after things have been correctly set up (you can change anything now)
+ * Called after the player has successfully authenticated, before it spawns. The player is on the loading screen when
+ * this is called.
+ * Cancelling this event will cause the player to be disconnected with the kick message set.
  */
 class PlayerLoginEvent extends PlayerEvent implements Cancellable{
+	use CancellableTrait;
+
 	/** @var string */
 	protected $kickMessage;
 
@@ -45,7 +50,7 @@ class PlayerLoginEvent extends PlayerEvent implements Cancellable{
 	/**
 	 * @param string $kickMessage
 	 */
-	public function setKickMessage(string $kickMessage){
+	public function setKickMessage(string $kickMessage) : void{
 		$this->kickMessage = $kickMessage;
 	}
 
@@ -55,5 +60,4 @@ class PlayerLoginEvent extends PlayerEvent implements Cancellable{
 	public function getKickMessage() : string{
 		return $this->kickMessage;
 	}
-
 }

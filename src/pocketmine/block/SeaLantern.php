@@ -28,16 +28,6 @@ use pocketmine\item\ItemFactory;
 
 class SeaLantern extends Transparent{
 
-	protected $id = self::SEA_LANTERN;
-
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
-	}
-
-	public function getName() : string{
-		return "Sea Lantern";
-	}
-
 	public function getHardness() : float{
 		return 0.3;
 	}
@@ -51,5 +41,4 @@ class SeaLantern extends Transparent{
 			ItemFactory::get(Item::PRISMARINE_CRYSTALS, 0, 3)
 		];
 	}
-
 }

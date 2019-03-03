@@ -23,13 +23,7 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
-class ActivatorRail extends Rail{
-
-	protected $id = self::ACTIVATOR_RAIL;
-
-	public function getName() : string{
-		return "Activator Rail";
-	}
+class ActivatorRail extends RedstoneRail{
 
 	//TODO
 }
