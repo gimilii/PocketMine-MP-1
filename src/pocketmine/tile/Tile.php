@@ -51,6 +51,79 @@ abstract class Tile extends Position{
 	/** @var TimingsHandler */
 	protected $timings;
 
+	public static function init(){
+		self::registerTile(Banner::class, [self::BANNER, "minecraft:banner"]);
+		self::registerTile(Bed::class, [self::BED, "minecraft:bed"]);
+		self::registerTile(Chest::class, [self::CHEST, "minecraft:chest"]);
+		self::registerTile(EnchantTable::class, [self::ENCHANT_TABLE, "minecraft:enchanting_table"]);
+		self::registerTile(EnderChest::class, [self::ENDER_CHEST, "minecraft:ender_chest"]);
+		self::registerTile(FlowerPot::class, [self::FLOWER_POT, "minecraft:flower_pot"]);
+		self::registerTile(Furnace::class, [self::FURNACE, "minecraft:furnace"]);
+		self::registerTile(ItemFrame::class, [self::ITEM_FRAME]); //this is an entity in PC
+		self::registerTile(Sign::class, [self::SIGN, "minecraft:sign"]);
+		self::registerTile(Skull::class, [self::SKULL, "minecraft:skull"]);
+		self::registerTile(MobSpawner::class);
+		
+	}
+
+	/**
+	 * @param string      $type
+	 * @param Level       $level
+	 * @param CompoundTag $nbt
+	 * @param             $args
+	 *
+	 * @return Tile|null
+	 */
+	public static function createTile($type, Level $level, CompoundTag $nbt, ...$args) : ?Tile{
+		if(isset(self::$knownTiles[$type])){
+			$class = self::$knownTiles[$type];
+			return new $class($level, $nbt, ...$args);
+		}
+
+		return null;
+	}
+
+	/**
+	 * @param       $className
+	 * @param array $saveNames
+	 *
+	 * @return bool
+	 * @throws \ReflectionException
+	 */
+	public static function registerTile($className, array $saveNames = []) : bool{
+		$class = new \ReflectionClass($className);
+		if(is_a($className, Tile::class, true) and !$class->isAbstract()){
+			$shortName = $class->getShortName();
+			if(!in_array($shortName, $saveNames, true)){
+				$saveNames[] = $shortName;
+			}
+
+			foreach($saveNames as $name){
+				self::$knownTiles[$name] = $className;
+			}
+
+			self::$saveNames[$className] = $saveNames;
+
+
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Returns the short save name
+	 * @return string
+	 */
+	public static function getSaveId() : string{
+		if(!isset(self::$saveNames[static::class])){
+			throw new \InvalidStateException("Tile is not registered");
+		}
+
+		reset(self::$saveNames[static::class]);
+		return current(self::$saveNames[static::class]);
+	}
+
 	public function __construct(Level $level, Vector3 $pos){
 		$this->timings = Timings::getTileEntityTimings($this);
 		parent::__construct($pos->getFloorX(), $pos->getFloorY(), $pos->getFloorZ(), $level);

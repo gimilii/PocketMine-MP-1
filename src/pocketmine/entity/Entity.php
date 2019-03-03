@@ -223,6 +223,7 @@ abstract class Entity extends Location implements Metadatable, EntityIds{
 	public const DATA_FLAG_INTERESTED = 26;
 	public const DATA_FLAG_CHARGED = 27;
 	public const DATA_FLAG_TAMED = 28;
+
 	public const DATA_FLAG_ORPHANED = 29;
 	public const DATA_FLAG_LEASHED = 30;
 	public const DATA_FLAG_SHEARED = 31;
@@ -265,7 +266,6 @@ abstract class Entity extends Location implements Metadatable, EntityIds{
 	public const DATA_FLAG_IN_SCAFFOLDING = 68;
 	public const DATA_FLAG_OVER_SCAFFOLDING = 69;
 	public const DATA_FLAG_FALL_THROUGH_SCAFFOLDING = 70;
-
 
 	/**
 	 * @var Player[]
@@ -381,6 +381,46 @@ abstract class Entity extends Location implements Metadatable, EntityIds{
 	/** @var bool */
 	protected $constructed = false;
 
+  public static $entityCount = 1;
+	/** @var Entity[] */
+	private static $knownEntities = [];
+	/** @var string[][] */
+	private static $saveNames = [];
+
+	/**
+	 * Called on server startup to register default entity types.
+	 */
+	public static function init() : void{
+		//define legacy save IDs first - use them for saving for maximum compatibility with Minecraft PC
+		//TODO: index them by version to allow proper multi-save compatibility
+
+		Entity::registerEntity(Arrow::class, false, ['Arrow', 'minecraft:arrow']);
+		Entity::registerEntity(Egg::class, false, ['Egg', 'minecraft:egg']);
+		Entity::registerEntity(EnderPearl::class, false, ['ThrownEnderpearl', 'minecraft:ender_pearl']);
+		Entity::registerEntity(ExperienceBottle::class, false, ['ThrownExpBottle', 'minecraft:xp_bottle']);
+		Entity::registerEntity(ExperienceOrb::class, false, ['XPOrb', 'minecraft:xp_orb']);
+		Entity::registerEntity(FallingBlock::class, false, ['FallingSand', 'minecraft:falling_block']);
+		Entity::registerEntity(ItemEntity::class, false, ['Item', 'minecraft:item']);
+		Entity::registerEntity(Painting::class, false, ['Painting', 'minecraft:painting']);
+		Entity::registerEntity(PrimedTNT::class, false, ['PrimedTnt', 'PrimedTNT', 'minecraft:tnt']);
+		Entity::registerEntity(Snowball::class, false, ['Snowball', 'minecraft:snowball']);
+		Entity::registerEntity(SplashPotion::class, false, ['ThrownPotion', 'minecraft:potion', 'thrownpotion']);
+		Entity::registerEntity(Squid::class, false, ['Squid', 'minecraft:squid']);
+		Entity::registerEntity(Villager::class, false, ['Villager',	'minecraft:villager']);
+		Entity::registerEntity(Zombie::class, false, ['Zombie',	'minecraft:zombie']);
+
+		Entity::registerEntity(Creeper::class, false, ['Creeper','minecraft:creeper']);
+		Entity::registerEntity(Skeleton::class, false, ['Skeleton','minecraft:skeleton']);
+		Entity::registerEntity(Stray::class, false, ['Stray','minecraft:stray']);
+		Entity::registerEntity(Husk::class, false, ['Husk','minecraft:husk']);
+		Entity::registerEntity(Ghast::class, false, ['Ghast','minecraft:ghast']);
+
+		Entity::registerEntity(Human::class, true);
+
+		Attribute::init();
+		Effect::init();
+		PaintingMotive::init();
+	}
 
 	public function __construct(Level $level, CompoundTag $nbt){
 		$this->constructed = true;

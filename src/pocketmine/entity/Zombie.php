@@ -27,16 +27,30 @@ use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
 use function mt_rand;
 
+use pocketmine\Player;
+
 class Zombie extends Monster{
 	public const NETWORK_ID = self::ZOMBIE;
 
 	public $width = 0.6;
 	public $height = 1.8;
-
+	public $length = 0.6;
+	
+	public $dropExp = [5, 5];
+	
 	public function getName() : string{
 		return "Zombie";
 	}
 
+	public function initEntity(){
+		$this->setMaxHealth(20);
+		parent::initEntity();
+	}
+	
+	public function spawnTo(Player $player){
+		$this->handleSpawnTo($player, self::NETWORK_ID);
+	}
+	
 	public function getDrops() : array{
 		$drops = [
 			ItemFactory::get(Item::ROTTEN_FLESH, 0, mt_rand(0, 2))
@@ -62,5 +76,9 @@ class Zombie extends Monster{
 	public function getXpDropAmount() : int{
 		//TODO: check for equipment and whether it's a baby
 		return 5;
+	}
+	
+	public function canCatchOnFire() {
+		return true;
 	}
 }

@@ -64,11 +64,16 @@ abstract class ProjectileItem extends Item{
 		$projectile = EntityFactory::create($class, $player->getLevel(), $nbt, $player);
 		$projectile->setMotion($projectile->getMotion()->multiply($this->getThrowForce()));
 
-		$projectileEv = new ProjectileLaunchEvent($projectile);
-		$projectileEv->call();
-		if($projectileEv->isCancelled()){
-			$projectile->flagForDespawn();
-			return ItemUseResult::FAIL();
+    $this->count--;
+		if($projectile instanceof Projectile){
+			$projectileEv = new ProjectileLaunchEvent($projectile);
+		  $projectileEv->call();
+		  if($projectileEv->isCancelled()){
+			  $projectile->flagForDespawn();
+			  return ItemUseResult::FAIL();
+      }
+		} elseif($projectile == null){
+			 return ItemUseResult::FAIL();
 		}
 
 		$projectile->spawnToAll();

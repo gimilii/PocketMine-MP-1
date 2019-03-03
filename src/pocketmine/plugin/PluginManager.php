@@ -462,6 +462,57 @@ class PluginManager{
 		$this->plugins = [];
 		$this->enabledPlugins = [];
 		$this->fileAssociations = [];
+    
+		$this->permissions = [];
+		$this->defaultPerms = [];
+		$this->defaultPermsOp = [];
+	}
+
+	/**
+	 * Calls an event
+	 *
+	 * @param Event $event
+	 */
+	public function callEvent(Event $event){
+		if($this->eventCallDepth >= self::MAX_EVENT_CALL_DEPTH){
+			//this exception will be caught by the parent event call if all else fails
+			throw new \RuntimeException("Recursive event call detected (reached max depth of " . self::MAX_EVENT_CALL_DEPTH . " calls)");
+		}
+
+		$handlerList = HandlerList::getHandlerListFor(get_class($event));
+		assert($handlerList !== null, "Called event should have a valid HandlerList");
+
+		++$this->eventCallDepth;
+		foreach(EventPriority::ALL as $priority){
+			$currentList = $handlerList;
+			while($currentList !== null){
+				foreach($currentList->getListenersByPriority($priority) as $registration){
+					if(!$registration->getPlugin()->isEnabled()){
+						continue;
+					}
+
+					try{
+						$registration->callEvent($event);
+					}catch(\Throwable $e){
+						$this->server->getLogger()->critical(
+							$this->server->getLanguage()->translateString("pocketmine.plugin.eventError", [
+								$event->getEventName(),
+								$registration->getPlugin()->getDescription()->getFullName(),
+								$e->getMessage(),
+								get_class($registration->getListener())
+							]));
+						$this->server->getLogger()->logException($e);
+					}
+				}
+
+				$currentList = $currentList->getParent();
+			}
+		}
+		--$this->eventCallDepth;
+		if($this->server->getAIHolder() != null) {
+			if($event instanceof EntityDeathEvent) $this->server->getAIHolder()->MobDeath($event);
+			if($event instanceof EntityDamageByEntityEvent) $this->server->getAIHolder()->EntityDamage($event);
+		}
 	}
 
 	/**
