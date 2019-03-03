@@ -24,9 +24,12 @@ declare(strict_types=1);
 namespace pocketmine\event\player;
 
 use pocketmine\event\Cancellable;
+use pocketmine\event\CancellableTrait;
 use pocketmine\Player;
 
 class PlayerToggleSprintEvent extends PlayerEvent implements Cancellable{
+	use CancellableTrait;
+
 	/** @var bool */
 	protected $isSprinting;
 
@@ -45,5 +48,4 @@ class PlayerToggleSprintEvent extends PlayerEvent implements Cancellable{
 	public function isSprinting() : bool{
 		return $this->isSprinting;
 	}
-
 }

@@ -24,31 +24,31 @@ declare(strict_types=1);
 namespace pocketmine\block;
 
 use pocketmine\entity\Entity;
+use pocketmine\entity\EntityFactory;
+use pocketmine\entity\object\PrimedTNT;
+use pocketmine\entity\projectile\Arrow;
+use pocketmine\item\Durable;
+use pocketmine\item\enchantment\Enchantment;
 use pocketmine\item\FlintSteel;
 use pocketmine\item\Item;
 use pocketmine\math\Vector3;
 use pocketmine\Player;
 use pocketmine\utils\Random;
+use function cos;
+use function sin;
+use const M_PI;
 
 class TNT extends Solid{
-
-	protected $id = self::TNT;
-
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
-	}
-
-	public function getName() : string{
-		return "TNT";
-	}
 
 	public function getHardness() : float{
 		return 0;
 	}
 
-	public function onActivate(Item $item, Player $player = null) : bool{
-		if($item instanceof FlintSteel){
-			$item->applyDamage(1);
+	public function onInteract(Item $item, int $face, Vector3 $clickVector, ?Player $player = null) : bool{
+		if($item instanceof FlintSteel or $item->hasEnchantment(Enchantment::FIRE_ASPECT())){
+			if($item instanceof Durable){
+				$item->applyDamage(1);
+			}
 			$this->ignite();
 			return true;
 		}
@@ -56,18 +56,26 @@ class TNT extends Solid{
 		return false;
 	}
 
-	public function ignite(int $fuse = 80){
-		$this->getLevel()->setBlock($this, BlockFactory::get(Block::AIR), true);
+	public function hasEntityCollision() : bool{
+		return true;
+	}
+
+	public function onEntityInside(Entity $entity) : void{
+		if($entity instanceof Arrow and $entity->isOnFire()){
+			$this->ignite();
+		}
+	}
+
+	public function ignite(int $fuse = 80) : void{
+		$this->getLevel()->setBlock($this, BlockFactory::get(Block::AIR));
 
 		$mot = (new Random())->nextSignedFloat() * M_PI * 2;
-		$nbt = Entity::createBaseNBT($this->add(0.5, 0, 0.5), new Vector3(-sin($mot) * 0.02, 0.2, -cos($mot) * 0.02));
+		$nbt = EntityFactory::createBaseNBT($this->add(0.5, 0, 0.5), new Vector3(-sin($mot) * 0.02, 0.2, -cos($mot) * 0.02));
 		$nbt->setShort("Fuse", $fuse);
 
-		$tnt = Entity::createEntity("PrimedTNT", $this->getLevel(), $nbt);
-
-		if($tnt !== null){
-			$tnt->spawnToAll();
-		}
+		/** @var PrimedTNT $tnt */
+		$tnt = EntityFactory::create(PrimedTNT::class, $this->getLevel(), $nbt);
+		$tnt->spawnToAll();
 	}
 
 	public function getFlameEncouragement() : int{

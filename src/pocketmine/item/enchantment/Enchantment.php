@@ -24,6 +24,9 @@ declare(strict_types=1);
 namespace pocketmine\item\enchantment;
 
 use pocketmine\event\entity\EntityDamageEvent;
+use function constant;
+use function defined;
+use function strtoupper;
 
 /**
  * Manages enchantment type data.
@@ -114,14 +117,103 @@ class Enchantment{
 		self::registerEnchantment(new ProtectionEnchantment(self::PROJECTILE_PROTECTION, "%enchantment.protect.projectile", self::RARITY_UNCOMMON, self::SLOT_ARMOR, self::SLOT_NONE, 4, 1.5, [
 			EntityDamageEvent::CAUSE_PROJECTILE
 		]));
-
+		self::registerEnchantment(new Enchantment(self::THORNS, "%enchantment.thorns", self::RARITY_MYTHIC, self::SLOT_TORSO, self::SLOT_HEAD | self::SLOT_LEGS | self::SLOT_FEET, 3));
 		self::registerEnchantment(new Enchantment(self::RESPIRATION, "%enchantment.oxygen", self::RARITY_RARE, self::SLOT_HEAD, self::SLOT_NONE, 3));
+
+		self::registerEnchantment(new SharpnessEnchantment(self::SHARPNESS, "%enchantment.damage.all", self::RARITY_COMMON, self::SLOT_SWORD, self::SLOT_AXE, 5));
+		//TODO: smite, bane of arthropods (these don't make sense now because their applicable mobs don't exist yet)
+
+		self::registerEnchantment(new KnockbackEnchantment(self::KNOCKBACK, "%enchantment.knockback", self::RARITY_UNCOMMON, self::SLOT_SWORD, self::SLOT_NONE, 2));
+		self::registerEnchantment(new FireAspectEnchantment(self::FIRE_ASPECT, "%enchantment.fire", self::RARITY_RARE, self::SLOT_SWORD, self::SLOT_NONE, 2));
 
 		self::registerEnchantment(new Enchantment(self::EFFICIENCY, "%enchantment.digging", self::RARITY_COMMON, self::SLOT_DIG, self::SLOT_SHEARS, 5));
 		self::registerEnchantment(new Enchantment(self::SILK_TOUCH, "%enchantment.untouching", self::RARITY_MYTHIC, self::SLOT_DIG, self::SLOT_SHEARS, 1));
 		self::registerEnchantment(new Enchantment(self::UNBREAKING, "%enchantment.durability", self::RARITY_UNCOMMON, self::SLOT_DIG | self::SLOT_ARMOR | self::SLOT_FISHING_ROD | self::SLOT_BOW, self::SLOT_TOOL | self::SLOT_CARROT_STICK | self::SLOT_ELYTRA, 3));
 
+		self::registerEnchantment(new Enchantment(self::POWER, "%enchantment.arrowDamage", self::RARITY_COMMON, self::SLOT_BOW, self::SLOT_NONE, 5));
+		self::registerEnchantment(new Enchantment(self::PUNCH, "%enchantment.arrowKnockback", self::RARITY_RARE, self::SLOT_BOW, self::SLOT_NONE, 2));
+		self::registerEnchantment(new Enchantment(self::FLAME, "%enchantment.arrowFire", self::RARITY_RARE, self::SLOT_BOW, self::SLOT_NONE, 1));
+		self::registerEnchantment(new Enchantment(self::INFINITY, "%enchantment.arrowInfinite", self::RARITY_MYTHIC, self::SLOT_BOW, self::SLOT_NONE, 1));
+
+		self::registerEnchantment(new Enchantment(self::MENDING, "%enchantment.mending", self::RARITY_RARE, self::SLOT_NONE, self::SLOT_ALL, 1));
+
 		self::registerEnchantment(new Enchantment(self::VANISHING, "%enchantment.curse.vanishing", self::RARITY_MYTHIC, self::SLOT_NONE, self::SLOT_ALL, 1));
+	}
+
+	public static function BLAST_PROTECTION() : Enchantment{
+		return self::getEnchantment(self::BLAST_PROTECTION);
+	}
+
+	public static function EFFICIENCY() : Enchantment{
+		return self::getEnchantment(self::EFFICIENCY);
+	}
+
+	public static function FEATHER_FALLING() : Enchantment{
+		return self::getEnchantment(self::FEATHER_FALLING);
+	}
+
+	public static function FIRE_ASPECT() : Enchantment{
+		return self::getEnchantment(self::FIRE_ASPECT);
+	}
+
+	public static function FIRE_PROTECTION() : Enchantment{
+		return self::getEnchantment(self::FIRE_PROTECTION);
+	}
+
+	public static function FLAME() : Enchantment{
+		return self::getEnchantment(self::FLAME);
+	}
+
+	public static function INFINITY() : Enchantment{
+		return self::getEnchantment(self::INFINITY);
+	}
+
+	public static function KNOCKBACK() : Enchantment{
+		return self::getEnchantment(self::KNOCKBACK);
+	}
+
+	public static function MENDING() : Enchantment{
+		return self::getEnchantment(self::MENDING);
+	}
+
+	public static function POWER() : Enchantment{
+		return self::getEnchantment(self::POWER);
+	}
+
+	public static function PROJECTILE_PROTECTION() : Enchantment{
+		return self::getEnchantment(self::PROJECTILE_PROTECTION);
+	}
+
+	public static function PROTECTION() : Enchantment{
+		return self::getEnchantment(self::PROTECTION);
+	}
+
+	public static function PUNCH() : Enchantment{
+		return self::getEnchantment(self::PUNCH);
+	}
+
+	public static function RESPIRATION() : Enchantment{
+		return self::getEnchantment(self::RESPIRATION);
+	}
+
+	public static function SHARPNESS() : Enchantment{
+		return self::getEnchantment(self::SHARPNESS);
+	}
+
+	public static function SILK_TOUCH() : Enchantment{
+		return self::getEnchantment(self::SILK_TOUCH);
+	}
+
+	public static function THORNS() : Enchantment{
+		return self::getEnchantment(self::THORNS);
+	}
+
+	public static function UNBREAKING() : Enchantment{
+		return self::getEnchantment(self::UNBREAKING);
+	}
+
+	public static function VANISHING() : Enchantment{
+		return self::getEnchantment(self::VANISHING);
 	}
 
 	/**

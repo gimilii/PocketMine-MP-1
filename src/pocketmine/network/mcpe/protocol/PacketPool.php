@@ -23,14 +23,16 @@ declare(strict_types=1);
 
 namespace pocketmine\network\mcpe\protocol;
 
+use pocketmine\utils\Binary;
+use pocketmine\utils\BinaryDataException;
+
 class PacketPool{
 	/** @var \SplFixedArray<DataPacket> */
 	protected static $pool = null;
 
-	public static function init(){
+	public static function init() : void{
 		static::$pool = new \SplFixedArray(256);
 
-		//Normal packets
 		static::registerPacket(new LoginPacket());
 		static::registerPacket(new PlayStatusPacket());
 		static::registerPacket(new ServerToClientHandshakePacket());
@@ -46,15 +48,14 @@ class PacketPool{
 		static::registerPacket(new AddEntityPacket());
 		static::registerPacket(new RemoveEntityPacket());
 		static::registerPacket(new AddItemEntityPacket());
-		static::registerPacket(new AddHangingEntityPacket());
 		static::registerPacket(new TakeItemEntityPacket());
-		static::registerPacket(new MoveEntityPacket());
+		static::registerPacket(new MoveEntityAbsolutePacket());
 		static::registerPacket(new MovePlayerPacket());
 		static::registerPacket(new RiderJumpPacket());
 		static::registerPacket(new UpdateBlockPacket());
 		static::registerPacket(new AddPaintingPacket());
 		static::registerPacket(new ExplodePacket());
-		static::registerPacket(new LevelSoundEventPacket());
+		static::registerPacket(new LevelSoundEventPacketV1());
 		static::registerPacket(new LevelEventPacket());
 		static::registerPacket(new BlockEventPacket());
 		static::registerPacket(new EntityEventPacket());
@@ -141,19 +142,30 @@ class PacketPool{
 		static::registerPacket(new SetScorePacket());
 		static::registerPacket(new LabTablePacket());
 		static::registerPacket(new UpdateBlockSyncedPacket());
-
-		static::registerPacket(new BatchPacket());
+		static::registerPacket(new MoveEntityDeltaPacket());
+		static::registerPacket(new SetScoreboardIdentityPacket());
+		static::registerPacket(new SetLocalPlayerAsInitializedPacket());
+		static::registerPacket(new UpdateSoftEnumPacket());
+		static::registerPacket(new NetworkStackLatencyPacket());
+		static::registerPacket(new ScriptCustomEventPacket());
+		static::registerPacket(new SpawnParticleEffectPacket());
+		static::registerPacket(new AvailableEntityIdentifiersPacket());
+		static::registerPacket(new LevelSoundEventPacketV2());
+		static::registerPacket(new NetworkChunkPublisherUpdatePacket());
+		static::registerPacket(new BiomeDefinitionListPacket());
+		static::registerPacket(new LevelSoundEventPacket());
 	}
 
 	/**
 	 * @param DataPacket $packet
 	 */
-	public static function registerPacket(DataPacket $packet){
+	public static function registerPacket(DataPacket $packet) : void{
 		static::$pool[$packet->pid()] = clone $packet;
 	}
 
 	/**
 	 * @param int $pid
+	 *
 	 * @return DataPacket
 	 */
 	public static function getPacketById(int $pid) : DataPacket{
@@ -162,13 +174,15 @@ class PacketPool{
 
 	/**
 	 * @param string $buffer
+	 *
 	 * @return DataPacket
+	 * @throws BinaryDataException
 	 */
 	public static function getPacket(string $buffer) : DataPacket{
-		$pk = static::getPacketById(ord($buffer{0}));
-		$pk->setBuffer($buffer);
+		$offset = 0;
+		$pk = static::getPacketById(Binary::readUnsignedVarInt($buffer, $offset));
+		$pk->setBuffer($buffer, $offset);
 
 		return $pk;
 	}
-
 }

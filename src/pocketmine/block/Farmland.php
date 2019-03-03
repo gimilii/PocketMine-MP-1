@@ -23,21 +23,27 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
+use pocketmine\block\utils\BlockDataValidator;
 use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
 use pocketmine\math\AxisAlignedBB;
-use pocketmine\math\Vector3;
+use pocketmine\math\Facing;
 
 class Farmland extends Transparent{
 
-	protected $id = self::FARMLAND;
+	/** @var int */
+	protected $wetness = 0; //"moisture" blockstate property in PC
 
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
+	protected function writeStateToMeta() : int{
+		return $this->wetness;
 	}
 
-	public function getName() : string{
-		return "Farmland";
+	public function readStateFromData(int $id, int $stateMeta) : void{
+		$this->wetness = BlockDataValidator::readBoundedInt("wetness", $stateMeta, 0, 7);
+	}
+
+	public function getStateBitmask() : int{
+		return 0b111;
 	}
 
 	public function getHardness() : float{
@@ -48,21 +54,13 @@ class Farmland extends Transparent{
 		return BlockToolType::TYPE_SHOVEL;
 	}
 
-
 	protected function recalculateBoundingBox() : ?AxisAlignedBB{
-		return new AxisAlignedBB(
-			$this->x,
-			$this->y,
-			$this->z,
-			$this->x + 1,
-			$this->y + 1, //TODO: this should be 0.9375, but MCPE currently treats them as a full block (https://bugs.mojang.com/browse/MCPE-12109)
-			$this->z + 1
-		);
+		return AxisAlignedBB::one(); //TODO: this should be trimmed at the top by 1/16, but MCPE currently treats them as a full block (https://bugs.mojang.com/browse/MCPE-12109)
 	}
 
 	public function onNearbyBlockChange() : void{
-		if($this->getSide(Vector3::SIDE_UP)->isSolid()){
-			$this->level->setBlock($this, BlockFactory::get(Block::DIRT), true);
+		if($this->getSide(Facing::UP)->isSolid()){
+			$this->level->setBlock($this, BlockFactory::get(Block::DIRT));
 		}
 	}
 
@@ -72,15 +70,15 @@ class Farmland extends Transparent{
 
 	public function onRandomTick() : void{
 		if(!$this->canHydrate()){
-			if($this->meta > 0){
-				$this->meta--;
-				$this->level->setBlock($this, $this, false, false);
+			if($this->wetness > 0){
+				$this->wetness--;
+				$this->level->setBlock($this, $this, false);
 			}else{
-				$this->level->setBlock($this, BlockFactory::get(Block::DIRT), false, true);
+				$this->level->setBlock($this, BlockFactory::get(Block::DIRT));
 			}
-		}elseif($this->meta < 7){
-			$this->meta = 7;
-			$this->level->setBlock($this, $this, false, false);
+		}elseif($this->wetness < 7){
+			$this->wetness = 7;
+			$this->level->setBlock($this, $this, false);
 		}
 	}
 
@@ -91,8 +89,7 @@ class Farmland extends Transparent{
 		for($y = $start->y; $y <= $end->y; ++$y){
 			for($z = $start->z; $z <= $end->z; ++$z){
 				for($x = $start->x; $x <= $end->x; ++$x){
-					$id = $this->level->getBlockIdAt($x, $y, $z);
-					if($id === Block::STILL_WATER or $id === Block::FLOWING_WATER){
+					if($this->level->getBlockAt($x, $y, $z) instanceof Water){
 						return true;
 					}
 				}
@@ -110,5 +107,9 @@ class Farmland extends Transparent{
 
 	public function isAffectedBySilkTouch() : bool{
 		return false;
+	}
+
+	public function getPickedItem() : Item{
+		return ItemFactory::get(Item::DIRT);
 	}
 }

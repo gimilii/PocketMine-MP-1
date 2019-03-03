@@ -23,25 +23,30 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
-use pocketmine\item\Item;
-use pocketmine\item\ItemFactory;
-
 class Tripwire extends Flowable{
 
-	protected $id = self::TRIPWIRE;
+	/** @var bool */
+	protected $triggered = false;
+	/** @var bool */
+	protected $suspended = false; //unclear usage, makes hitbox bigger if set
+	/** @var bool */
+	protected $connected = false;
+	/** @var bool */
+	protected $disarmed = false;
 
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
+	protected function writeStateToMeta() : int{
+		return ($this->triggered ? 0x01 : 0) | ($this->suspended ? 0x02 : 0) | ($this->connected ? 0x04 : 0) | ($this->disarmed ? 0x08 : 0);
 	}
 
-	public function getName() : string{
-		return "Tripwire";
+	public function readStateFromData(int $id, int $stateMeta) : void{
+		$this->triggered = ($stateMeta & 0x01) !== 0;
+		$this->suspended = ($stateMeta & 0x02) !== 0;
+		$this->connected = ($stateMeta & 0x04) !== 0;
+		$this->disarmed = ($stateMeta & 0x08) !== 0;
 	}
 
-	public function getDropsForCompatibleTool(Item $item) : array{
-		return [
-			ItemFactory::get(Item::STRING)
-		];
+	public function getStateBitmask() : int{
+		return 0b1111;
 	}
 
 	public function isAffectedBySilkTouch() : bool{

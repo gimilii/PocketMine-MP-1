@@ -25,18 +25,9 @@ namespace pocketmine\block;
 
 use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
+use function mt_rand;
 
 class Melon extends Transparent{
-
-	protected $id = self::MELON_BLOCK;
-
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
-	}
-
-	public function getName() : string{
-		return "Melon Block";
-	}
 
 	public function getHardness() : float{
 		return 1;

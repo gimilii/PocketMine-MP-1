@@ -32,20 +32,6 @@ use pocketmine\math\AxisAlignedBB;
  */
 class Air extends Transparent{
 
-	protected $id = self::AIR;
-
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
-	}
-
-	public function getName() : string{
-		return "Air";
-	}
-
-	public function canPassThrough() : bool{
-		return true;
-	}
-
 	public function isBreakable(Item $item) : bool{
 		return false;
 	}
@@ -81,5 +67,4 @@ class Air extends Transparent{
 	public function getBlastResistance() : float{
 		return 0;
 	}
-
 }

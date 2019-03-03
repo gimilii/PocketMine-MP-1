@@ -39,10 +39,6 @@ class FurnaceInventory extends ContainerInventory{
 		return WindowTypes::FURNACE;
 	}
 
-	public function getName() : string{
-		return "Furnace";
-	}
-
 	public function getDefaultSize() : int{
 		return 3; //1 input, 1 fuel, 1 output
 	}
@@ -101,11 +97,5 @@ class FurnaceInventory extends ContainerInventory{
 	 */
 	public function setSmelting(Item $item) : bool{
 		return $this->setItem(0, $item);
-	}
-
-	public function onSlotChange(int $index, Item $before, bool $send) : void{
-		parent::onSlotChange($index, $before, $send);
-
-		$this->getHolder()->scheduleUpdate();
 	}
 }

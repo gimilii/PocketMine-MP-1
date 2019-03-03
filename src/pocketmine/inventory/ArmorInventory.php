@@ -24,13 +24,13 @@ declare(strict_types=1);
 namespace pocketmine\inventory;
 
 use pocketmine\entity\Living;
-use pocketmine\event\entity\EntityArmorChangeEvent;
 use pocketmine\item\Item;
 use pocketmine\network\mcpe\protocol\InventoryContentPacket;
 use pocketmine\network\mcpe\protocol\InventorySlotPacket;
 use pocketmine\network\mcpe\protocol\MobArmorEquipmentPacket;
 use pocketmine\Player;
-use pocketmine\Server;
+use function array_merge;
+use function array_search;
 
 class ArmorInventory extends BaseInventory{
 	public const SLOT_HEAD = 0;
@@ -48,10 +48,6 @@ class ArmorInventory extends BaseInventory{
 
 	public function getHolder() : Living{
 		return $this->holder;
-	}
-
-	public function getName() : string{
-		return "Armor";
 	}
 
 	public function getDefaultSize() : int{
@@ -90,39 +86,26 @@ class ArmorInventory extends BaseInventory{
 		return $this->setItem(self::SLOT_FEET, $boots);
 	}
 
-	protected function doSetItemEvents(int $index, Item $newItem) : ?Item{
-		Server::getInstance()->getPluginManager()->callEvent($ev = new EntityArmorChangeEvent($this->getHolder(), $this->getItem($index), $newItem, $index));
-		if($ev->isCancelled()){
-			return null;
-		}
-
-		return $ev->getNewItem();
-	}
-
 	public function sendSlot(int $index, $target) : void{
 		if($target instanceof Player){
 			$target = [$target];
 		}
 
-		$armor = $this->getContents(true);
+		/** @var Player[] $target */
 
-		$pk = new MobArmorEquipmentPacket();
-		$pk->entityRuntimeId = $this->getHolder()->getId();
-		$pk->slots = $armor;
-		$pk->encode();
-
-		foreach($target as $player){
-			if($player === $this->getHolder()){
-				/** @var Player $player */
-
-				$pk2 = new InventorySlotPacket();
-				$pk2->windowId = $player->getWindowId($this);
-				$pk2->inventorySlot = $index;
-				$pk2->item = $this->getItem($index);
-				$player->dataPacket($pk2);
-			}else{
-				$player->dataPacket($pk);
-			}
+		if(($k = array_search($this->holder, $target, true)) !== false){
+			$pk = new InventorySlotPacket();
+			$pk->windowId = $target[$k]->getWindowId($this);
+			$pk->inventorySlot = $index;
+			$pk->item = $this->getItem($index);
+			$target[$k]->sendDataPacket($pk);
+			unset($target[$k]);
+		}
+		if(!empty($target)){
+			$pk = new MobArmorEquipmentPacket();
+			$pk->entityRuntimeId = $this->getHolder()->getId();
+			$pk->slots = $this->getContents(true);
+			$this->holder->getLevel()->getServer()->broadcastPacket($target, $pk);
 		}
 	}
 
@@ -133,20 +116,18 @@ class ArmorInventory extends BaseInventory{
 
 		$armor = $this->getContents(true);
 
-		$pk = new MobArmorEquipmentPacket();
-		$pk->entityRuntimeId = $this->getHolder()->getId();
-		$pk->slots = $armor;
-		$pk->encode();
-
-		foreach($target as $player){
-			if($player === $this->getHolder()){
-				$pk2 = new InventoryContentPacket();
-				$pk2->windowId = $player->getWindowId($this);
-				$pk2->items = $armor;
-				$player->dataPacket($pk2);
-			}else{
-				$player->dataPacket($pk);
-			}
+		if(($k = array_search($this->holder, $target, true)) !== false){
+			$pk = new InventoryContentPacket();
+			$pk->windowId = $target[$k]->getWindowId($this);
+			$pk->items = $armor;
+			$target[$k]->sendDataPacket($pk);
+			unset($target[$k]);
+		}
+		if(!empty($target)){
+			$pk = new MobArmorEquipmentPacket();
+			$pk->entityRuntimeId = $this->getHolder()->getId();
+			$pk->slots = $armor;
+			$this->holder->getLevel()->getServer()->broadcastPacket($target, $pk);
 		}
 	}
 

@@ -25,23 +25,15 @@ namespace pocketmine\block;
 
 use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
+use pocketmine\math\Facing;
 use pocketmine\math\Vector3;
 use pocketmine\Player;
+use function mt_rand;
 
 class DeadBush extends Flowable{
 
-	protected $id = self::DEAD_BUSH;
-
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
-	}
-
-	public function getName() : string{
-		return "Dead Bush";
-	}
-
-	public function place(Item $item, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector, Player $player = null) : bool{
-		if(!$this->getSide(Vector3::SIDE_DOWN)->isTransparent()){
+	public function place(Item $item, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector, ?Player $player = null) : bool{
+		if(!$this->getSide(Facing::DOWN)->isTransparent()){
 			return parent::place($item, $blockReplace, $blockClicked, $face, $clickVector, $player);
 		}
 
@@ -49,7 +41,7 @@ class DeadBush extends Flowable{
 	}
 
 	public function onNearbyBlockChange() : void{
-		if($this->getSide(Vector3::SIDE_DOWN)->isTransparent()){
+		if($this->getSide(Facing::DOWN)->isTransparent()){
 			$this->getLevel()->useBreakOn($this);
 		}
 	}

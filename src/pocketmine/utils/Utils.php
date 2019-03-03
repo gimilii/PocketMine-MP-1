@@ -27,14 +27,78 @@ declare(strict_types=1);
 
 namespace pocketmine\utils;
 
+use DaveRandom\CallbackValidator\CallbackType;
 use pocketmine\ThreadManager;
+use function array_combine;
+use function array_map;
+use function array_reverse;
+use function array_values;
+use function base64_decode;
+use function bin2hex;
+use function chunk_split;
+use function count;
+use function debug_zval_dump;
+use function dechex;
+use function exec;
+use function explode;
+use function fclose;
+use function file;
+use function file_exists;
+use function file_get_contents;
+use function function_exists;
+use function get_class;
+use function get_current_user;
+use function get_loaded_extensions;
+use function getenv;
+use function gettype;
+use function hexdec;
+use function implode;
+use function is_array;
+use function is_object;
+use function is_readable;
+use function is_string;
+use function json_decode;
+use function json_last_error_msg;
+use function memory_get_usage;
+use function ob_end_clean;
+use function ob_get_contents;
+use function ob_start;
+use function ord;
+use function php_uname;
+use function phpversion;
+use function posix_kill;
+use function preg_grep;
+use function preg_match;
+use function preg_match_all;
+use function preg_replace;
+use function proc_close;
+use function proc_open;
+use function sha1;
+use function spl_object_hash;
+use function str_pad;
+use function str_replace;
+use function str_split;
+use function stream_get_contents;
+use function stripos;
+use function strlen;
+use function strpos;
+use function strtolower;
+use function strval;
+use function substr;
+use function sys_get_temp_dir;
+use function trim;
+use function xdebug_get_function_stack;
+use const PHP_EOL;
+use const PHP_INT_MAX;
+use const PHP_INT_SIZE;
+use const PHP_MAXPATHLEN;
+use const STR_PAD_LEFT;
+use const STR_PAD_RIGHT;
 
 /**
  * Big collection of functions
  */
 class Utils{
-	public static $online = true;
-	public static $ip = false;
 	public static $os;
 	/** @var UUID|null */
 	private static $serverUniqueId = null;
@@ -46,12 +110,57 @@ class Utils{
 	 *
 	 * @return string
 	 */
-	public static function getCallableIdentifier(callable $variable){
+	public static function getCallableIdentifier(callable $variable) : string{
 		if(is_array($variable)){
 			return sha1(strtolower(spl_object_hash($variable[0])) . "::" . strtolower($variable[1]));
 		}else{
 			return sha1(strtolower($variable));
 		}
+	}
+
+	/**
+	 * Returns a readable identifier for the given Closure, including file and line.
+	 *
+	 * @param \Closure $closure
+	 *
+	 * @return string
+	 * @throws \ReflectionException
+	 */
+	public static function getNiceClosureName(\Closure $closure) : string{
+		$func = new \ReflectionFunction($closure);
+		if(substr($func->getName(), -strlen('{closure}')) !== '{closure}'){
+			//closure wraps a named function, can be done with reflection or fromCallable()
+			//isClosure() is useless here because it just tells us if $func is reflecting a Closure object
+
+			$scope = $func->getClosureScopeClass();
+			if($scope !== null){ //class method
+				return
+					$scope->getName() .
+					($func->getClosureThis() !== null ? "->" : "::") .
+					$func->getName(); //name doesn't include class in this case
+			}
+
+			//non-class function
+			return $func->getName();
+		}
+		return "closure@" . self::cleanPath($func->getFileName()) . "#L" . $func->getStartLine();
+	}
+
+	/**
+	 * Returns a readable identifier for the class of the given object. Sanitizes class names for anonymous classes.
+	 *
+	 * @param object $obj
+	 *
+	 * @return string
+	 * @throws \ReflectionException
+	 */
+	public static function getNiceClassName(object $obj) : string{
+		$reflect = new \ReflectionClass($obj);
+		if($reflect->isAnonymous()){
+			return "anonymous@" . self::cleanPath($reflect->getFileName()) . "#L" . $reflect->getStartLine();
+		}
+
+		return $reflect->getName();
 	}
 
 	/**
@@ -120,58 +229,6 @@ class Utils{
 		}
 
 		return $uuid;
-	}
-
-	/**
-	 * Gets the External IP using an external service, it is cached
-	 *
-	 * @param bool $force default false, force IP check even when cached
-	 *
-	 * @return string|bool
-	 */
-	public static function getIP(bool $force = false){
-		if(!Utils::$online){
-			return false;
-		}elseif(Utils::$ip !== false and !$force){
-			return Utils::$ip;
-		}
-
-		do{
-			$ip = Utils::getURL("http://api.ipify.org/");
-			if($ip !== false){
-				Utils::$ip = $ip;
-				break;
-			}
-
-			$ip = Utils::getURL("http://checkip.dyndns.org/");
-			if($ip !== false and preg_match('#Current IP Address\: ([0-9a-fA-F\:\.]*)#', trim(strip_tags($ip)), $matches) > 0){
-				Utils::$ip = $matches[1];
-				break;
-			}
-
-			$ip = Utils::getURL("http://www.checkip.org/");
-			if($ip !== false and preg_match('#">([0-9a-fA-F\:\.]*)</span>#', $ip, $matches) > 0){
-				Utils::$ip = $matches[1];
-				break;
-			}
-
-			$ip = Utils::getURL("http://checkmyip.org/");
-			if($ip !== false and preg_match('#Your IP address is ([0-9a-fA-F\:\.]*)#', $ip, $matches) > 0){
-				Utils::$ip = $matches[1];
-				break;
-			}
-
-			$ip = Utils::getURL("http://ifconfig.me/ip");
-			if($ip !== false and trim($ip) != ""){
-				Utils::$ip = trim($ip);
-				break;
-			}
-
-			return false;
-
-		}while(false);
-
-		return Utils::$ip;
 	}
 
 	/**
@@ -288,6 +345,7 @@ class Utils{
 
 	/**
 	 * @param bool $recalculate
+	 *
 	 * @return int
 	 */
 	public static function getCoreCount(bool $recalculate = false) : int{
@@ -308,8 +366,8 @@ class Utils{
 							++$processors;
 						}
 					}
-				}else{
-					if(preg_match("/^([0-9]+)\\-([0-9]+)$/", trim(@file_get_contents("/sys/devices/system/cpu/present")), $matches) > 0){
+				}elseif(is_readable("/sys/devices/system/cpu/present")){
+					if(preg_match("/^([0-9]+)\\-([0-9]+)$/", trim(file_get_contents("/sys/devices/system/cpu/present")), $matches) > 0){
 						$processors = (int) ($matches[2] - $matches[1]);
 					}
 				}
@@ -372,121 +430,6 @@ class Utils{
 		return array("yaw" => $hAngle, "pitch" => $vAngle);
 	}*/
 
-	/**
-	 * GETs an URL using cURL
-	 * NOTE: This is a blocking operation and can take a significant amount of time. It is inadvisable to use this method on the main thread.
-	 *
-	 * @param string  $page
-	 * @param int     $timeout default 10
-	 * @param array   $extraHeaders
-	 * @param string  &$err    Will be set to the output of curl_error(). Use this to retrieve errors that occured during the operation.
-	 * @param array[] &$headers
-	 * @param int     &$httpCode
-	 *
-	 * @return bool|mixed false if an error occurred, mixed data if successful.
-	 */
-	public static function getURL(string $page, int $timeout = 10, array $extraHeaders = [], &$err = null, &$headers = null, &$httpCode = null){
-		try{
-			list($ret, $headers, $httpCode) = self::simpleCurl($page, $timeout, $extraHeaders);
-			return $ret;
-		}catch(\RuntimeException $ex){
-			$err = $ex->getMessage();
-			return false;
-		}
-	}
-
-	/**
-	 * POSTs data to an URL
-	 * NOTE: This is a blocking operation and can take a significant amount of time. It is inadvisable to use this method on the main thread.
-	 *
-	 * @param string       $page
-	 * @param array|string $args
-	 * @param int          $timeout
-	 * @param array        $extraHeaders
-	 * @param string       &$err Will be set to the output of curl_error(). Use this to retrieve errors that occured during the operation.
-	 * @param array[]      &$headers
-	 * @param int          &$httpCode
-	 *
-	 * @return bool|mixed false if an error occurred, mixed data if successful.
-	 */
-	public static function postURL(string $page, $args, int $timeout = 10, array $extraHeaders = [], &$err = null, &$headers = null, &$httpCode = null){
-		try{
-			list($ret, $headers, $httpCode) = self::simpleCurl($page, $timeout, $extraHeaders, [
-				CURLOPT_POST => 1,
-				CURLOPT_POSTFIELDS => $args
-			]);
-			return $ret;
-		}catch(\RuntimeException $ex){
-			$err = $ex->getMessage();
-			return false;
-		}
-
-	}
-
-	/**
-	 * General cURL shorthand function.
-	 * NOTE: This is a blocking operation and can take a significant amount of time. It is inadvisable to use this method on the main thread.
-	 *
-	 * @param string        $page
-	 * @param float|int     $timeout      The maximum connect timeout and timeout in seconds, correct to ms.
-	 * @param string[]      $extraHeaders extra headers to send as a plain string array
-	 * @param array         $extraOpts    extra CURLOPT_* to set as an [opt => value] map
-	 * @param callable|null $onSuccess    function to be called if there is no error. Accepts a resource argument as the cURL handle.
-	 *
-	 * @return array a plain array of three [result body : string, headers : array[], HTTP response code : int]. Headers are grouped by requests with strtolower(header name) as keys and header value as values
-	 *
-	 * @throws \RuntimeException if a cURL error occurs
-	 */
-	public static function simpleCurl(string $page, $timeout = 10, array $extraHeaders = [], array $extraOpts = [], callable $onSuccess = null){
-		if(!Utils::$online){
-			throw new \RuntimeException("Server is offline");
-		}
-
-		$ch = curl_init($page);
-
-		curl_setopt_array($ch, $extraOpts + [
-			CURLOPT_SSL_VERIFYPEER => false,
-			CURLOPT_SSL_VERIFYHOST => 2,
-			CURLOPT_FORBID_REUSE => 1,
-			CURLOPT_FRESH_CONNECT => 1,
-			CURLOPT_AUTOREFERER => true,
-			CURLOPT_FOLLOWLOCATION => true,
-			CURLOPT_RETURNTRANSFER => true,
-			CURLOPT_CONNECTTIMEOUT_MS => (int) ($timeout * 1000),
-			CURLOPT_TIMEOUT_MS => (int) ($timeout * 1000),
-			CURLOPT_HTTPHEADER => array_merge(["User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:12.0) Gecko/20100101 Firefox/12.0 " . \pocketmine\NAME], $extraHeaders),
-			CURLOPT_HEADER => true
-		]);
-		try{
-			$raw = curl_exec($ch);
-			$error = curl_error($ch);
-			if($error !== ""){
-				throw new \RuntimeException($error);
-			}
-			$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-			$headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-			$rawHeaders = substr($raw, 0, $headerSize);
-			$body = substr($raw, $headerSize);
-			$headers = [];
-			foreach(explode("\r\n\r\n", $rawHeaders) as $rawHeaderGroup){
-				$headerGroup = [];
-				foreach(explode("\r\n", $rawHeaderGroup) as $line){
-					$nameValue = explode(":", $line, 2);
-					if(isset($nameValue[1])){
-						$headerGroup[trim(strtolower($nameValue[0]))] = trim($nameValue[1]);
-					}
-				}
-				$headers[] = $headerGroup;
-			}
-			if($onSuccess !== null){
-				$onSuccess($ch);
-			}
-			return [$body, $headers, $httpCode];
-		}finally{
-			curl_close($ch);
-		}
-	}
-
 	public static function javaStringHash(string $string) : int{
 		$hash = 0;
 		for($i = 0, $len = strlen($string); $i < $len; $i++){
@@ -538,14 +481,33 @@ class Utils{
 		return proc_close($process);
 	}
 
-	public static function decodeJWT(string $token) : array{
-		list($headB64, $payloadB64, $sigB64) = explode(".", $token);
+	/**
+	 * @param string $token
+	 *
+	 * @return array of claims
+	 *
+	 * @throws \UnexpectedValueException
+	 */
+	public static function getJwtClaims(string $token) : array{
+		$v = explode(".", $token);
+		if(count($v) !== 3){
+			throw new \UnexpectedValueException("Expected exactly 3 JWT parts, got " . count($v));
+		}
+		$payloadB64 = $v[1];
+		$payloadJSON = base64_decode(strtr($payloadB64, '-_', '+/'), true);
+		if($payloadJSON === false){
+			throw new \UnexpectedValueException("Invalid base64 JWT payload");
+		}
+		$result = json_decode($payloadJSON, true);
+		if(!is_array($result)){
+			throw new \UnexpectedValueException("Failed to decode JWT payload JSON: " . json_last_error_msg());
+		}
 
-		return json_decode(base64_decode(strtr($payloadB64, '-_', '+/'), true), true);
+		return $result;
 	}
 
 	public static function kill($pid) : void{
-		global $logger;
+		$logger = \GlobalLogger::get();
 		if($logger instanceof MainLogger){
 			$logger->syncFlushBuffer();
 		}
@@ -570,7 +532,7 @@ class Utils{
 	 *
 	 * @return int
 	 */
-	public static function getReferenceCount($value, $includeCurrent = true){
+	public static function getReferenceCount($value, bool $includeCurrent = true) : int{
 		ob_start();
 		debug_zval_dump($value);
 		$ret = explode("\n", ob_get_contents());
@@ -583,24 +545,13 @@ class Utils{
 	}
 
 	/**
-	 * @param int        $start
-	 * @param array|null $trace
+	 * @param array $trace
 	 *
 	 * @return array
 	 */
-	public static function getTrace($start = 0, $trace = null){
-		if($trace === null){
-			if(function_exists("xdebug_get_function_stack")){
-				$trace = array_reverse(xdebug_get_function_stack());
-			}else{
-				$e = new \Exception();
-				$trace = $e->getTrace();
-			}
-		}
-
+	public static function printableTrace(array $trace) : array{
 		$messages = [];
-		$j = 0;
-		for($i = (int) $start; isset($trace[$i]); ++$i, ++$j){
+		for($i = 0; isset($trace[$i]); ++$i){
 			$params = "";
 			if(isset($trace[$i]["args"]) or isset($trace[$i]["params"])){
 				if(isset($trace[$i]["args"])){
@@ -613,14 +564,55 @@ class Utils{
 					return (is_object($value) ? get_class($value) . " object" : gettype($value) . " " . (is_array($value) ? "Array()" : Utils::printable(@strval($value))));
 				}, $args));
 			}
-			$messages[] = "#$j " . (isset($trace[$i]["file"]) ? self::cleanPath($trace[$i]["file"]) : "") . "(" . (isset($trace[$i]["line"]) ? $trace[$i]["line"] : "") . "): " . (isset($trace[$i]["class"]) ? $trace[$i]["class"] . (($trace[$i]["type"] === "dynamic" or $trace[$i]["type"] === "->") ? "->" : "::") : "") . $trace[$i]["function"] . "(" . Utils::printable($params) . ")";
+			$messages[] = "#$i " . (isset($trace[$i]["file"]) ? self::cleanPath($trace[$i]["file"]) : "") . "(" . (isset($trace[$i]["line"]) ? $trace[$i]["line"] : "") . "): " . (isset($trace[$i]["class"]) ? $trace[$i]["class"] . (($trace[$i]["type"] === "dynamic" or $trace[$i]["type"] === "->") ? "->" : "::") : "") . $trace[$i]["function"] . "(" . Utils::printable($params) . ")";
 		}
-
 		return $messages;
 	}
 
+	/**
+	 * @param int $skipFrames
+	 *
+	 * @return array
+	 */
+	public static function currentTrace(int $skipFrames = 0) : array{
+		++$skipFrames; //omit this frame from trace, in addition to other skipped frames
+		if(function_exists("xdebug_get_function_stack")){
+			$trace = array_reverse(xdebug_get_function_stack());
+		}else{
+			$e = new \Exception();
+			$trace = $e->getTrace();
+		}
+		for($i = 0; $i < $skipFrames; ++$i){
+			unset($trace[$i]);
+		}
+		return array_values($trace);
+	}
+
+	/**
+	 * @param int $skipFrames
+	 *
+	 * @return array
+	 */
+	public static function printableCurrentTrace(int $skipFrames = 0) : array{
+		return self::printableTrace(self::currentTrace(++$skipFrames));
+	}
+
 	public static function cleanPath($path){
-		return str_replace(["\\", ".php", "phar://", str_replace(["\\", "phar://"], ["/", ""], \pocketmine\PATH), str_replace(["\\", "phar://"], ["/", ""], \pocketmine\PLUGIN_PATH)], ["/", "", "", "", ""], $path);
+		$result = str_replace(["\\", ".php", "phar://"], ["/", "", ""], $path);
+
+		//remove relative paths
+		//TODO: make these paths dynamic so they can be unit-tested against
+		static $cleanPaths = [
+			\pocketmine\PLUGIN_PATH => "plugins", //this has to come BEFORE \pocketmine\PATH because it's inside that by default on src installations
+			\pocketmine\PATH => ""
+		];
+		foreach($cleanPaths as $cleanPath => $replacement){
+			$cleanPath = rtrim(str_replace(["\\", "phar://"], ["/", ""], $cleanPath), "/");
+			if(strpos($result, $cleanPath) === 0){
+				$result = ltrim(str_replace($cleanPath, $replacement, $result), "/");
+			}
+		}
+		return $result;
 	}
 
 	/**
@@ -631,8 +623,45 @@ class Utils{
 	 * @return string[] an array of tagName => tag value. If the tag has no value, an empty string is used as the value.
 	 */
 	public static function parseDocComment(string $docComment) : array{
-		preg_match_all('/^[\t ]*\* @([a-zA-Z]+)(?:[\t ]+(.+))?[\t ]*$/m', $docComment, $matches);
+		preg_match_all('/(*ANYCRLF)^[\t ]*\* @([a-zA-Z]+)(?:[\t ]+(.+))?[\t ]*$/m', $docComment, $matches);
 
-		return array_combine($matches[1], array_map("trim", $matches[2]));
+		return array_combine($matches[1], $matches[2]);
+	}
+
+	public static function testValidInstance(string $className, string $baseName) : void{
+		try{
+			$base = new \ReflectionClass($baseName);
+		}catch(\ReflectionException $e){
+			throw new \InvalidArgumentException("Base class $baseName does not exist");
+		}
+
+		try{
+			$class = new \ReflectionClass($className);
+		}catch(\ReflectionException $e){
+			throw new \InvalidArgumentException("Class $className does not exist");
+		}
+
+		if(!$class->isSubclassOf($baseName)){
+			throw new \InvalidArgumentException("Class $className does not " . ($base->isInterface() ? "implement" : "extend") . " " . $baseName);
+		}
+		if(!$class->isInstantiable()){
+			throw new \InvalidArgumentException("Class $className cannot be constructed");
+		}
+	}
+
+	/**
+	 * Verifies that the given callable is compatible with the desired signature. Throws a TypeError if they are
+	 * incompatible.
+	 *
+	 * @param callable $signature Dummy callable with the required parameters and return type
+	 * @param callable $subject Callable to check the signature of
+	 *
+	 * @throws \DaveRandom\CallbackValidator\InvalidCallbackException
+	 * @throws \TypeError
+	 */
+	public static function validateCallableSignature(callable $signature, callable $subject) : void{
+		if(!($sigType = CallbackType::createFromCallable($signature))->isSatisfiedBy($subject)){
+			throw new \TypeError("Declaration of callable `" . CallbackType::createFromCallable($subject) . "` must be compatible with `" . $sigType . "`");
+		}
 	}
 }

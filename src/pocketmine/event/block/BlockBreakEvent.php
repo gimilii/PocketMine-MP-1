@@ -25,6 +25,7 @@ namespace pocketmine\event\block;
 
 use pocketmine\block\Block;
 use pocketmine\event\Cancellable;
+use pocketmine\event\CancellableTrait;
 use pocketmine\item\Item;
 use pocketmine\Player;
 
@@ -32,6 +33,8 @@ use pocketmine\Player;
  * Called when a player destroys a block somewhere in the world.
  */
 class BlockBreakEvent extends BlockEvent implements Cancellable{
+	use CancellableTrait;
+
 	/** @var Player */
 	protected $player;
 
@@ -92,7 +95,7 @@ class BlockBreakEvent extends BlockEvent implements Cancellable{
 	/**
 	 * @param bool $instaBreak
 	 */
-	public function setInstaBreak(bool $instaBreak){
+	public function setInstaBreak(bool $instaBreak) : void{
 		$this->instaBreak = $instaBreak;
 	}
 
@@ -107,7 +110,7 @@ class BlockBreakEvent extends BlockEvent implements Cancellable{
 	/**
 	 * @param Item[] $drops
 	 */
-	public function setDrops(array $drops){
+	public function setDrops(array $drops) : void{
 		$this->setDropsVariadic(...$drops);
 	}
 
@@ -116,7 +119,7 @@ class BlockBreakEvent extends BlockEvent implements Cancellable{
 	 *
 	 * @param Item ...$drops
 	 */
-	public function setDropsVariadic(Item ...$drops){
+	public function setDropsVariadic(Item ...$drops) : void{
 		$this->blockDrops = $drops;
 	}
 
@@ -134,7 +137,7 @@ class BlockBreakEvent extends BlockEvent implements Cancellable{
 	 *
 	 * @param int $amount
 	 */
-	public function setXpDrops(int $amount) : void{
+	public function setXpDropAmount(int $amount) : void{
 		if($amount < 0){
 			throw new \InvalidArgumentException("Amount must be at least zero");
 		}

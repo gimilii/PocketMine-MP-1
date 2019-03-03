@@ -26,18 +26,9 @@ namespace pocketmine\block;
 use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
 use pocketmine\item\TieredTool;
+use function mt_rand;
 
 class EmeraldOre extends Solid{
-
-	protected $id = self::EMERALD_ORE;
-
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
-	}
-
-	public function getName() : string{
-		return "Emerald Ore";
-	}
 
 	public function getToolType() : int{
 		return BlockToolType::TYPE_PICKAXE;
@@ -53,7 +44,11 @@ class EmeraldOre extends Solid{
 
 	public function getDropsForCompatibleTool(Item $item) : array{
 		return [
-				ItemFactory::get(Item::EMERALD)
+			ItemFactory::get(Item::EMERALD)
 		];
+	}
+
+	protected function getXpDropAmount() : int{
+		return mt_rand(3, 7);
 	}
 }

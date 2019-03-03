@@ -32,12 +32,12 @@ interface CommandSender extends Permissible{
 	/**
 	 * @param TextContainer|string $message
 	 */
-	public function sendMessage($message);
+	public function sendMessage($message) : void;
 
 	/**
 	 * @return Server
 	 */
-	public function getServer();
+	public function getServer() : Server;
 
 	/**
 	 * @return string
@@ -54,7 +54,8 @@ interface CommandSender extends Permissible{
 
 	/**
 	 * Sets the line height used for command output pagination for this command sender. `null` will reset it to default.
+	 *
 	 * @param int|null $height
 	 */
-	public function setScreenLineHeight(int $height = null);
+	public function setScreenLineHeight(?int $height) : void;
 }

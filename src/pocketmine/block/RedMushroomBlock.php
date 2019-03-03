@@ -24,17 +24,29 @@ declare(strict_types=1);
 namespace pocketmine\block;
 
 use pocketmine\item\Item;
+use function mt_rand;
 
 class RedMushroomBlock extends Solid{
 
-	protected $id = Block::RED_MUSHROOM_BLOCK;
+	/**
+	 * @var int
+	 * In PC they have blockstate properties for each of the sides (pores/not pores). Unfortunately, we can't support
+	 * that because we can't serialize 2^6 combinations into a 4-bit metadata value, so this has to stick with storing
+	 * the legacy crap for now.
+	 * TODO: change this once proper blockstates are implemented
+	 */
+	protected $rotationData = 0;
 
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
+	protected function writeStateToMeta() : int{
+		return $this->rotationData;
 	}
 
-	public function getName() : string{
-		return "Red Mushroom Block";
+	public function readStateFromData(int $id, int $stateMeta) : void{
+		$this->rotationData = $stateMeta;
+	}
+
+	public function getStateBitmask() : int{
+		return 0b1111;
 	}
 
 	public function getHardness() : float{
@@ -50,5 +62,4 @@ class RedMushroomBlock extends Solid{
 			Item::get(Item::RED_MUSHROOM, 0, mt_rand(0, 2))
 		];
 	}
-
 }

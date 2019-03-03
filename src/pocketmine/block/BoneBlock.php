@@ -23,23 +23,11 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
-use pocketmine\block\utils\PillarRotationHelper;
-use pocketmine\item\Item;
+use pocketmine\block\utils\PillarRotationTrait;
 use pocketmine\item\TieredTool;
-use pocketmine\math\Vector3;
-use pocketmine\Player;
 
 class BoneBlock extends Solid{
-
-	protected $id = Block::BONE_BLOCK;
-
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
-	}
-
-	public function getName() : string{
-		return "Bone Block";
-	}
+	use PillarRotationTrait;
 
 	public function getHardness() : float{
 		return 2;
@@ -51,14 +39,5 @@ class BoneBlock extends Solid{
 
 	public function getToolHarvestLevel() : int{
 		return TieredTool::TIER_WOODEN;
-	}
-
-	public function place(Item $item, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector, Player $player = null) : bool{
-		$this->meta = PillarRotationHelper::getMetaFromFace($this->meta, $face);
-		return $this->getLevel()->setBlock($blockReplace, $this, true, true);
-	}
-
-	public function getVariantBitmask() : int{
-		return 0x03;
 	}
 }

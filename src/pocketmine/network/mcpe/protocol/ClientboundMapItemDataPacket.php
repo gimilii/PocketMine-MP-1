@@ -27,11 +27,18 @@ namespace pocketmine\network\mcpe\protocol;
 #include <rules/DataPacket.h>
 
 
-use pocketmine\network\mcpe\NetworkSession;
+use pocketmine\network\BadPacketException;
+use pocketmine\network\mcpe\handler\SessionHandler;
 use pocketmine\network\mcpe\protocol\types\DimensionIds;
+use pocketmine\network\mcpe\protocol\types\MapTrackedObject;
 use pocketmine\utils\Color;
+use function assert;
+use function count;
+#ifndef COMPILE
+use pocketmine\utils\Binary;
+#endif
 
-class ClientboundMapItemDataPacket extends DataPacket{
+class ClientboundMapItemDataPacket extends DataPacket implements ClientboundPacket{
 	public const NETWORK_ID = ProtocolInfo::CLIENTBOUND_MAP_ITEM_DATA_PACKET;
 
 	public const BITFLAG_TEXTURE_UPDATE = 0x02;
@@ -49,8 +56,8 @@ class ClientboundMapItemDataPacket extends DataPacket{
 	/** @var int */
 	public $scale;
 
-	/** @var int[] */
-	public $decorationEntityUniqueIds = [];
+	/** @var MapTrackedObject[] */
+	public $trackedEntities = [];
 	/** @var array */
 	public $decorations = [];
 
@@ -65,7 +72,7 @@ class ClientboundMapItemDataPacket extends DataPacket{
 	/** @var Color[][] */
 	public $colors = [];
 
-	protected function decodePayload(){
+	protected function decodePayload() : void{
 		$this->mapId = $this->getEntityUniqueId();
 		$this->type = $this->getUnsignedVarInt();
 		$this->dimensionId = $this->getByte();
@@ -83,7 +90,16 @@ class ClientboundMapItemDataPacket extends DataPacket{
 
 		if(($this->type & self::BITFLAG_DECORATION_UPDATE) !== 0){
 			for($i = 0, $count = $this->getUnsignedVarInt(); $i < $count; ++$i){
-				$this->decorationEntityUniqueIds[] = $this->getEntityUniqueId();
+				$object = new MapTrackedObject();
+				$object->type = $this->getLInt();
+				if($object->type === MapTrackedObject::TYPE_BLOCK){
+					$this->getBlockPosition($object->x, $object->y, $object->z);
+				}elseif($object->type === MapTrackedObject::TYPE_ENTITY){
+					$object->entityUniqueId = $this->getEntityUniqueId();
+				}else{
+					throw new BadPacketException("Unknown map object type $object->type");
+				}
+				$this->trackedEntities[] = $object;
 			}
 
 			for($i = 0, $count = $this->getUnsignedVarInt(); $i < $count; ++$i){
@@ -93,7 +109,7 @@ class ClientboundMapItemDataPacket extends DataPacket{
 				$this->decorations[$i]["yOffset"] = $this->getByte();
 				$this->decorations[$i]["label"] = $this->getString();
 
-				$this->decorations[$i]["color"] = Color::fromABGR($this->getUnsignedVarInt());
+				$this->decorations[$i]["color"] = Color::fromRGBA(Binary::flipIntEndianness($this->getUnsignedVarInt()));
 			}
 		}
 
@@ -104,17 +120,19 @@ class ClientboundMapItemDataPacket extends DataPacket{
 			$this->yOffset = $this->getVarInt();
 
 			$count = $this->getUnsignedVarInt();
-			assert($count === $this->width * $this->height);
+			if($count !== $this->width * $this->height){
+				throw new BadPacketException("Expected colour count of " . ($this->height * $this->width) . " (height $this->height * width $this->width), got $count");
+			}
 
 			for($y = 0; $y < $this->height; ++$y){
 				for($x = 0; $x < $this->width; ++$x){
-					$this->colors[$y][$x] = Color::fromABGR($this->getUnsignedVarInt());
+					$this->colors[$y][$x] = Color::fromRGBA(Binary::flipIntEndianness($this->getUnsignedVarInt()));
 				}
 			}
 		}
 	}
 
-	protected function encodePayload(){
+	protected function encodePayload() : void{
 		$this->putEntityUniqueId($this->mapId);
 
 		$type = 0;
@@ -143,9 +161,16 @@ class ClientboundMapItemDataPacket extends DataPacket{
 		}
 
 		if(($type & self::BITFLAG_DECORATION_UPDATE) !== 0){
-			$this->putUnsignedVarInt(count($this->decorationEntityUniqueIds));
-			foreach($this->decorationEntityUniqueIds as $id){
-				$this->putEntityUniqueId($id);
+			$this->putUnsignedVarInt(count($this->trackedEntities));
+			foreach($this->trackedEntities as $object){
+				$this->putLInt($object->type);
+				if($object->type === MapTrackedObject::TYPE_BLOCK){
+					$this->putBlockPosition($object->x, $object->y, $object->z);
+				}elseif($object->type === MapTrackedObject::TYPE_ENTITY){
+					$this->putEntityUniqueId($object->entityUniqueId);
+				}else{
+					throw new \InvalidArgumentException("Unknown map object type $object->type");
+				}
 			}
 
 			$this->putUnsignedVarInt($decorationCount);
@@ -157,7 +182,7 @@ class ClientboundMapItemDataPacket extends DataPacket{
 				$this->putString($decoration["label"]);
 
 				assert($decoration["color"] instanceof Color);
-				$this->putUnsignedVarInt($decoration["color"]->toABGR());
+				$this->putUnsignedVarInt(Binary::flipIntEndianness($decoration["color"]->toRGBA()));
 			}
 		}
 
@@ -171,13 +196,14 @@ class ClientboundMapItemDataPacket extends DataPacket{
 
 			for($y = 0; $y < $this->height; ++$y){
 				for($x = 0; $x < $this->width; ++$x){
-					$this->putUnsignedVarInt($this->colors[$y][$x]->toABGR());
+					//if mojang had any sense this would just be a regular LE int
+					$this->putUnsignedVarInt(Binary::flipIntEndianness($this->colors[$y][$x]->toRGBA()));
 				}
 			}
 		}
 	}
 
-	public function handle(NetworkSession $session) : bool{
-		return $session->handleClientboundMapItemData($this);
+	public function handle(SessionHandler $handler) : bool{
+		return $handler->handleClientboundMapItemData($this);
 	}
 }

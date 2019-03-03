@@ -23,16 +23,86 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
+use pocketmine\block\utils\BlockDataValidator;
+use pocketmine\item\Item;
+use pocketmine\item\TieredTool;
+use pocketmine\math\Facing;
+use pocketmine\math\Vector3;
+use pocketmine\Player;
+use pocketmine\tile\Furnace as TileFurnace;
 
-class Furnace extends BurningFurnace{
+class Furnace extends Solid{
+	/** @var BlockIdentifierFlattened */
+	protected $idInfo;
 
-	protected $id = self::FURNACE;
+	/** @var int */
+	protected $facing = Facing::NORTH;
+	/** @var bool */
+	protected $lit = false; //this is set based on the blockID
 
-	public function getName() : string{
-		return "Furnace";
+	public function getId() : int{
+		return $this->lit ? $this->idInfo->getSecondId() : parent::getId();
+	}
+
+	protected function writeStateToMeta() : int{
+		return $this->facing;
+	}
+
+	public function readStateFromData(int $id, int $stateMeta) : void{
+		$this->facing = BlockDataValidator::readHorizontalFacing($stateMeta);
+		$this->lit = $id === $this->idInfo->getSecondId();
+	}
+
+	public function getStateBitmask() : int{
+		return 0b111;
+	}
+
+	public function getHardness() : float{
+		return 3.5;
+	}
+
+	public function getToolType() : int{
+		return BlockToolType::TYPE_PICKAXE;
+	}
+
+	public function getToolHarvestLevel() : int{
+		return TieredTool::TIER_WOODEN;
 	}
 
 	public function getLightLevel() : int{
-		return 0;
+		return $this->lit ? 13 : 0;
+	}
+
+	public function isLit() : bool{
+		return $this->lit;
+	}
+
+	/**
+	 * @param bool $lit
+	 *
+	 * @return $this
+	 */
+	public function setLit(bool $lit = true) : self{
+		$this->lit = $lit;
+		return $this;
+	}
+
+	public function place(Item $item, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector, ?Player $player = null) : bool{
+		if($player !== null){
+			$this->facing = Facing::opposite($player->getHorizontalFacing());
+		}
+
+		return parent::place($item, $blockReplace, $blockClicked, $face, $clickVector, $player);
+	}
+
+	public function onInteract(Item $item, int $face, Vector3 $clickVector, ?Player $player = null) : bool{
+		if($player instanceof Player){
+			$furnace = $this->getLevel()->getTile($this);
+			if($furnace instanceof TileFurnace and $furnace->canOpenWith($item->getCustomName())){
+				$player->addWindow($furnace->getInventory());
+			}
+		}
+
+		return true;
 	}
 }

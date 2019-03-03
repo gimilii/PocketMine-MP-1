@@ -28,25 +28,26 @@ use pocketmine\block\BlockFactory;
 use pocketmine\math\Vector3;
 use pocketmine\network\mcpe\protocol\LevelSoundEventPacket;
 use pocketmine\Player;
+use function assert;
 
 class FlintSteel extends Tool{
-	public function __construct(int $meta = 0){
-		parent::__construct(self::FLINT_STEEL, $meta, "Flint and Steel");
+	public function __construct(){
+		parent::__construct(self::FLINT_STEEL, 0, "Flint and Steel");
 	}
 
-	public function onActivate(Player $player, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector) : bool{
-		if($blockReplace->getId() === self::AIR){
+	public function onActivate(Player $player, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector) : ItemUseResult{
+		if($blockReplace->getId() === Block::AIR){
 			$level = $player->getLevel();
 			assert($level !== null);
-			$level->setBlock($blockReplace, BlockFactory::get(Block::FIRE), true);
+			$level->setBlock($blockReplace, BlockFactory::get(Block::FIRE));
 			$level->broadcastLevelSoundEvent($blockReplace->add(0.5, 0.5, 0.5), LevelSoundEventPacket::SOUND_IGNITE);
 
 			$this->applyDamage(1);
 
-			return true;
+			return ItemUseResult::SUCCESS();
 		}
 
-		return false;
+		return ItemUseResult::NONE();
 	}
 
 	public function getMaxDurability() : int{

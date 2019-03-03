@@ -27,12 +27,6 @@ use pocketmine\item\TieredTool;
 
 class Coal extends Solid{
 
-	protected $id = self::COAL_BLOCK;
-
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
-	}
-
 	public function getHardness() : float{
 		return 5;
 	}
@@ -43,10 +37,6 @@ class Coal extends Solid{
 
 	public function getToolHarvestLevel() : int{
 		return TieredTool::TIER_WOODEN;
-	}
-
-	public function getName() : string{
-		return "Coal Block";
 	}
 
 	public function getFuelTime() : int{

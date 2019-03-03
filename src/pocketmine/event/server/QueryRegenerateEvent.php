@@ -27,6 +27,10 @@ use pocketmine\Player;
 use pocketmine\plugin\Plugin;
 use pocketmine\Server;
 use pocketmine\utils\Binary;
+use function chr;
+use function count;
+use function str_replace;
+use function substr;
 
 class QueryRegenerateEvent extends ServerEvent{
 	public const GAME_ID = "MINECRAFTPE";
@@ -84,7 +88,8 @@ class QueryRegenerateEvent extends ServerEvent{
 		$this->gametype = ($server->getGamemode() & 0x01) === 0 ? "SMP" : "CMP";
 		$this->version = $server->getVersion();
 		$this->server_engine = $server->getName() . " " . $server->getPocketMineVersion();
-		$this->map = $server->getDefaultLevel() === null ? "unknown" : $server->getDefaultLevel()->getName();
+		$level = $server->getLevelManager()->getDefaultLevel();
+		$this->map = $level === null ? "unknown" : $level->getDisplayName();
 		$this->numPlayers = count($this->players);
 		$this->maxPlayers = $server->getMaxPlayers();
 		$this->whitelist = $server->hasWhitelist() ? "on" : "off";
@@ -105,7 +110,7 @@ class QueryRegenerateEvent extends ServerEvent{
 	/**
 	 * @param int $timeout
 	 */
-	public function setTimeout(int $timeout){
+	public function setTimeout(int $timeout) : void{
 		$this->timeout = $timeout;
 	}
 
@@ -119,7 +124,7 @@ class QueryRegenerateEvent extends ServerEvent{
 	/**
 	 * @param string $serverName
 	 */
-	public function setServerName(string $serverName){
+	public function setServerName(string $serverName) : void{
 		$this->serverName = $serverName;
 	}
 
@@ -133,7 +138,7 @@ class QueryRegenerateEvent extends ServerEvent{
 	/**
 	 * @param bool $value
 	 */
-	public function setListPlugins(bool $value){
+	public function setListPlugins(bool $value) : void{
 		$this->listPlugins = $value;
 	}
 
@@ -147,7 +152,7 @@ class QueryRegenerateEvent extends ServerEvent{
 	/**
 	 * @param Plugin[] $plugins
 	 */
-	public function setPlugins(array $plugins){
+	public function setPlugins(array $plugins) : void{
 		$this->plugins = $plugins;
 	}
 
@@ -161,7 +166,7 @@ class QueryRegenerateEvent extends ServerEvent{
 	/**
 	 * @param Player[] $players
 	 */
-	public function setPlayerList(array $players){
+	public function setPlayerList(array $players) : void{
 		$this->players = $players;
 	}
 
@@ -175,7 +180,7 @@ class QueryRegenerateEvent extends ServerEvent{
 	/**
 	 * @param int $count
 	 */
-	public function setPlayerCount(int $count){
+	public function setPlayerCount(int $count) : void{
 		$this->numPlayers = $count;
 	}
 
@@ -189,7 +194,7 @@ class QueryRegenerateEvent extends ServerEvent{
 	/**
 	 * @param int $count
 	 */
-	public function setMaxPlayerCount(int $count){
+	public function setMaxPlayerCount(int $count) : void{
 		$this->maxPlayers = $count;
 	}
 
@@ -203,7 +208,7 @@ class QueryRegenerateEvent extends ServerEvent{
 	/**
 	 * @param string $world
 	 */
-	public function setWorld(string $world){
+	public function setWorld(string $world) : void{
 		$this->map = $world;
 	}
 
@@ -219,7 +224,7 @@ class QueryRegenerateEvent extends ServerEvent{
 	/**
 	 * @param array $extraData
 	 */
-	public function setExtraData(array $extraData){
+	public function setExtraData(array $extraData) : void{
 		$this->extraData = $extraData;
 	}
 
@@ -278,5 +283,4 @@ class QueryRegenerateEvent extends ServerEvent{
 	public function getShortQuery() : string{
 		return $this->serverName . "\x00" . $this->gametype . "\x00" . $this->map . "\x00" . $this->numPlayers . "\x00" . $this->maxPlayers . "\x00" . Binary::writeLShort($this->port) . $this->ip . "\x00";
 	}
-
 }

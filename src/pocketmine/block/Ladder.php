@@ -23,22 +23,29 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
+use pocketmine\block\utils\BlockDataValidator;
 use pocketmine\entity\Entity;
 use pocketmine\item\Item;
 use pocketmine\math\AxisAlignedBB;
+use pocketmine\math\Facing;
 use pocketmine\math\Vector3;
 use pocketmine\Player;
 
 class Ladder extends Transparent{
 
-	protected $id = self::LADDER;
+	/** @var int */
+	protected $facing = Facing::NORTH;
 
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
+	protected function writeStateToMeta() : int{
+		return $this->facing;
 	}
 
-	public function getName() : string{
-		return "Ladder";
+	public function readStateFromData(int $id, int $stateMeta) : void{
+		$this->facing = BlockDataValidator::readHorizontalFacing($stateMeta);
+	}
+
+	public function getStateBitmask() : int{
+		return 0b111;
 	}
 
 	public function hasEntityCollision() : bool{
@@ -57,68 +64,34 @@ class Ladder extends Transparent{
 		return true;
 	}
 
-	public function onEntityCollide(Entity $entity) : void{
-		$entity->resetFallDistance();
-		$entity->onGround = true;
+	public function onEntityInside(Entity $entity) : void{
+		if($entity->asVector3()->floor()->distanceSquared($this) < 1){ //entity coordinates must be inside block
+			$entity->resetFallDistance();
+			$entity->onGround = true;
+		}
 	}
 
 	protected function recalculateBoundingBox() : ?AxisAlignedBB{
-		$f = 0.1875;
-
-		$minX = $minZ = 0;
-		$maxX = $maxZ = 1;
-
-		if($this->meta === 2){
-			$minZ = 1 - $f;
-		}elseif($this->meta === 3){
-			$maxZ = $f;
-		}elseif($this->meta === 4){
-			$minX = 1 - $f;
-		}elseif($this->meta === 5){
-			$maxX = $f;
-		}
-
-		return new AxisAlignedBB(
-			$this->x + $minX,
-			$this->y,
-			$this->z + $minZ,
-			$this->x + $maxX,
-			$this->y + 1,
-			$this->z + $maxZ
-		);
+		return AxisAlignedBB::one()->trim($this->facing, 13 / 16);
 	}
 
 
-	public function place(Item $item, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector, Player $player = null) : bool{
-		if(!$blockClicked->isTransparent()){
-			$faces = [
-				2 => 2,
-				3 => 3,
-				4 => 4,
-				5 => 5
-			];
-			if(isset($faces[$face])){
-				$this->meta = $faces[$face];
-				$this->getLevel()->setBlock($blockReplace, $this, true, true);
-
-				return true;
-			}
+	public function place(Item $item, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector, ?Player $player = null) : bool{
+		if(!$blockClicked->isTransparent() and Facing::axis($face) !== Facing::AXIS_Y){
+			$this->facing = $face;
+			return parent::place($item, $blockReplace, $blockClicked, $face, $clickVector, $player);
 		}
 
 		return false;
 	}
 
 	public function onNearbyBlockChange() : void{
-		if(!$this->getSide($this->meta ^ 0x01)->isSolid()){ //Replace with common break method
+		if(!$this->getSide(Facing::opposite($this->facing))->isSolid()){ //Replace with common break method
 			$this->level->useBreakOn($this);
 		}
 	}
 
 	public function getToolType() : int{
 		return BlockToolType::TYPE_AXE;
-	}
-
-	public function getVariantBitmask() : int{
-		return 0;
 	}
 }

@@ -36,7 +36,7 @@ cd tests/plugins/PocketMine-DevTools
 "$PHP_BINARY" -dphar.readonly=0 ./src/DevTools/ConsoleScript.php --make ./ --relative ./ --out ../../../DevTools.phar
 cd ../../..
 
-"$PHP_BINARY" -dphar.readonly=0 DevTools.phar --make src,vendor --relative ./ --entry src/pocketmine/PocketMine.php --out PocketMine-MP.phar
+"$PHP_BINARY" -dphar.readonly=0 DevTools.phar --make src,vendor,resources --relative ./ --entry src/pocketmine/PocketMine.php --out PocketMine-MP.phar
 if [ -f PocketMine-MP.phar ]; then
 	echo Server phar created successfully.
 else
@@ -47,8 +47,8 @@ fi
 mkdir "$DATA_DIR"
 mkdir "$PLUGINS_DIR"
 mv DevTools.phar "$PLUGINS_DIR"
-cp -r tests/plugins/PocketMine-TesterPlugin "$PLUGINS_DIR"
-echo -e "stop\n" | "$PHP_BINARY" PocketMine-MP.phar --no-wizard --disable-ansi --disable-readline --debug.level=2 --data="$DATA_DIR" --plugins="$PLUGINS_DIR" --anonymous-statistics.enabled=0 --settings.async-workers="$PM_WORKERS"
+cp -r tests/plugins/TesterPlugin "$PLUGINS_DIR"
+echo -e "stop\n" | "$PHP_BINARY" PocketMine-MP.phar --no-wizard --disable-ansi --disable-readline --debug.level=2 --data="$DATA_DIR" --plugins="$PLUGINS_DIR" --anonymous-statistics.enabled=0 --settings.async-workers="$PM_WORKERS" --settings.enable-dev-builds=1
 
 output=$(grep '\[TesterPlugin\]' "$DATA_DIR/server.log")
 if [ "$output" == "" ]; then

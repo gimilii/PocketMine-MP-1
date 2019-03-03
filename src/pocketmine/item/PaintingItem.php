@@ -24,82 +24,81 @@ declare(strict_types=1);
 namespace pocketmine\item;
 
 use pocketmine\block\Block;
-use pocketmine\entity\Entity;
+use pocketmine\entity\EntityFactory;
 use pocketmine\entity\object\Painting;
 use pocketmine\entity\object\PaintingMotive;
+use pocketmine\math\Facing;
 use pocketmine\math\Vector3;
 use pocketmine\network\mcpe\protocol\LevelEventPacket;
 use pocketmine\Player;
+use function array_rand;
 
 class PaintingItem extends Item{
-	public function __construct(int $meta = 0){
-		parent::__construct(self::PAINTING, $meta, "Painting");
+	public function __construct(){
+		parent::__construct(self::PAINTING, 0, "Painting");
 	}
 
-	public function onActivate(Player $player, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector) : bool{
-		if(!$blockClicked->isTransparent() and $face > 1 and !$blockReplace->isSolid()){
-			/** @var PaintingMotive[] $motives */
-			$motives = [];
+	public function onActivate(Player $player, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector) : ItemUseResult{
+		if(Facing::axis($face) === Facing::AXIS_Y){
+			return ItemUseResult::NONE();
+		}
 
-			$totalDimension = 0;
-			foreach(PaintingMotive::getAll() as $motive){
-				$currentTotalDimension = $motive->getHeight() + $motive->getWidth();
-				if($currentTotalDimension < $totalDimension){
-					continue;
+		$motives = [];
+
+		$totalDimension = 0;
+		foreach(PaintingMotive::getAll() as $motive){
+			$currentTotalDimension = $motive->getHeight() + $motive->getWidth();
+			if($currentTotalDimension < $totalDimension){
+				continue;
+			}
+
+			if(Painting::canFit($player->getLevel(), $blockReplace, $face, true, $motive)){
+				if($currentTotalDimension > $totalDimension){
+					$totalDimension = $currentTotalDimension;
+					/*
+					 * This drops all motive possibilities smaller than this
+					 * We use the total of height + width to allow equal chance of horizontal/vertical paintings
+					 * when there is an L-shape of space available.
+					 */
+					$motives = [];
 				}
 
-				if(Painting::canFit($player->level, $blockReplace, $face, true, $motive)){
-					if($currentTotalDimension > $totalDimension){
-						$totalDimension = $currentTotalDimension;
-						/*
-						 * This drops all motive possibilities smaller than this
-						 * We use the total of height + width to allow equal chance of horizontal/vertical paintings
-						 * when there is an L-shape of space available.
-						 */
-						$motives = [];
-					}
-
-					$motives[] = $motive;
-				}
-			}
-
-			if(empty($motives)){ //No space available
-				return false;
-			}
-
-			/** @var PaintingMotive $motive */
-			$motive = $motives[array_rand($motives)];
-
-			static $directions = [
-				Vector3::SIDE_SOUTH => 0,
-				Vector3::SIDE_WEST => 1,
-				Vector3::SIDE_NORTH => 2,
-				Vector3::SIDE_EAST => 3
-			];
-
-			$direction = $directions[$face] ?? -1;
-			if($direction === -1){
-				return false;
-			}
-
-			$nbt = Entity::createBaseNBT($blockReplace, null, $direction * 90, 0);
-			$nbt->setByte("Direction", $direction);
-			$nbt->setString("Motive", $motive->getName());
-			$nbt->setInt("TileX", $blockClicked->getFloorX());
-			$nbt->setInt("TileY", $blockClicked->getFloorY());
-			$nbt->setInt("TileZ", $blockClicked->getFloorZ());
-
-			$entity = Entity::createEntity("Painting", $blockReplace->getLevel(), $nbt);
-
-			if($entity instanceof Entity){
-				--$this->count;
-				$entity->spawnToAll();
-
-				$player->getLevel()->broadcastLevelEvent($blockReplace->add(0.5, 0.5, 0.5), LevelEventPacket::EVENT_SOUND_ITEMFRAME_PLACE); //item frame and painting have the same sound
-				return true;
+				$motives[] = $motive;
 			}
 		}
 
-		return false;
+		if(empty($motives)){ //No space available
+			return ItemUseResult::NONE();
+		}
+
+		/** @var PaintingMotive $motive */
+		$motive = $motives[array_rand($motives)];
+
+		static $directions = [
+			Facing::SOUTH => 0,
+			Facing::WEST => 1,
+			Facing::NORTH => 2,
+			Facing::EAST => 3
+		];
+
+		$direction = $directions[$face] ?? -1;
+		if($direction === -1){
+			return ItemUseResult::NONE();
+		}
+
+		$nbt = EntityFactory::createBaseNBT($blockReplace, null, $direction * 90, 0);
+		$nbt->setByte("Direction", $direction);
+		$nbt->setString("Motive", $motive->getName());
+		$nbt->setInt("TileX", $blockClicked->getFloorX());
+		$nbt->setInt("TileY", $blockClicked->getFloorY());
+		$nbt->setInt("TileZ", $blockClicked->getFloorZ());
+
+		/** @var Painting $entity */
+		$entity = EntityFactory::create(Painting::class, $blockReplace->getLevel(), $nbt);
+		$this->pop();
+		$entity->spawnToAll();
+
+		$player->getLevel()->broadcastLevelEvent($blockReplace->add(0.5, 0.5, 0.5), LevelEventPacket::EVENT_SOUND_ITEMFRAME_PLACE); //item frame and painting have the same sound
+		return ItemUseResult::SUCCESS();
 	}
 }

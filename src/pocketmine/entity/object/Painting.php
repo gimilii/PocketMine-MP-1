@@ -32,11 +32,14 @@ use pocketmine\item\ItemFactory;
 use pocketmine\level\Level;
 use pocketmine\level\particle\DestroyBlockParticle;
 use pocketmine\math\AxisAlignedBB;
+use pocketmine\math\Bearing;
+use pocketmine\math\Facing;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\ByteTag;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\network\mcpe\protocol\AddPaintingPacket;
 use pocketmine\Player;
+use function ceil;
 
 class Painting extends Entity{
 	public const NETWORK_ID = self::PAINTING;
@@ -70,20 +73,24 @@ class Painting extends Entity{
 		parent::__construct($level, $nbt);
 	}
 
-	protected function initEntity() : void{
+	protected function initEntity(CompoundTag $nbt) : void{
 		$this->setMaxHealth(1);
 		$this->setHealth(1);
-		parent::initEntity();
+		parent::initEntity($nbt);
 	}
 
-	public function saveNBT() : void{
-		parent::saveNBT();
-		$this->namedtag->setInt("TileX", (int) $this->blockIn->x);
-		$this->namedtag->setInt("TileY", (int) $this->blockIn->y);
-		$this->namedtag->setInt("TileZ", (int) $this->blockIn->z);
+	public function saveNBT() : CompoundTag{
+		$nbt = parent::saveNBT();
+		$nbt->setInt("TileX", (int) $this->blockIn->x);
+		$nbt->setInt("TileY", (int) $this->blockIn->y);
+		$nbt->setInt("TileZ", (int) $this->blockIn->z);
 
-		$this->namedtag->setByte("Facing", (int) $this->direction);
-		$this->namedtag->setByte("Direction", (int) $this->direction); //Save both for full compatibility
+		$nbt->setByte("Facing", (int) $this->direction);
+		$nbt->setByte("Direction", (int) $this->direction); //Save both for full compatibility
+
+		$nbt->setString("Motive", $this->motive);
+
+		return $nbt;
 	}
 
 	public function kill() : void{
@@ -102,33 +109,18 @@ class Painting extends Entity{
 			//non-living entities don't have a way to create drops generically yet
 			$this->level->dropItem($this, ItemFactory::get(Item::PAINTING));
 		}
-		$this->level->addParticle(new DestroyBlockParticle($this->add(0.5, 0.5, 0.5), BlockFactory::get(Block::PLANKS)));
+		$this->level->addParticle($this->add(0.5, 0.5, 0.5), new DestroyBlockParticle(BlockFactory::get(Block::PLANKS)));
 	}
 
 	protected function recalculateBoundingBox() : void{
-		static $directions = [
-			0 => Vector3::SIDE_SOUTH,
-			1 => Vector3::SIDE_WEST,
-			2 => Vector3::SIDE_NORTH,
-			3 => Vector3::SIDE_EAST
-		];
-
-		$facing = $directions[$this->direction];
-
+		$facing = Bearing::toFacing($this->direction);
 		$this->boundingBox->setBB(self::getPaintingBB($this->blockIn->getSide($facing), $facing, $this->getMotive()));
 	}
 
 	public function onNearbyBlockChange() : void{
 		parent::onNearbyBlockChange();
 
-		static $directions = [
-			0 => Vector3::SIDE_SOUTH,
-			1 => Vector3::SIDE_WEST,
-			2 => Vector3::SIDE_NORTH,
-			3 => Vector3::SIDE_EAST
-		];
-
-		$face = $directions[$this->direction];
+		$face = Bearing::toFacing($this->direction);
 		if(!self::canFit($this->level, $this->blockIn->getSide($face), $face, false, $this->getMotive())){
 			$this->kill();
 		}
@@ -155,7 +147,7 @@ class Painting extends Entity{
 		$pk->direction = $this->direction;
 		$pk->title = $this->motive;
 
-		$player->dataPacket($pk);
+		$player->sendDataPacket($pk);
 	}
 
 	/**
@@ -166,7 +158,7 @@ class Painting extends Entity{
 		return PaintingMotive::getMotiveByName($this->motive);
 	}
 
-	public function getDirection() : ?int{
+	public function getDirection() : int{
 		return $this->direction;
 	}
 
@@ -195,25 +187,25 @@ class Painting extends Entity{
 		$maxY = $minY + $height;
 
 		switch($facing){
-			case Vector3::SIDE_NORTH:
+			case Facing::NORTH:
 				$minZ = 1 - $thickness;
 				$maxZ = 1;
 				$maxX = $horizontalStart + 1;
 				$minX = $maxX - $width;
 				break;
-			case Vector3::SIDE_SOUTH:
+			case Facing::SOUTH:
 				$minZ = 0;
 				$maxZ = $thickness;
 				$minX = -$horizontalStart;
 				$maxX = $minX + $width;
 				break;
-			case Vector3::SIDE_WEST:
+			case Facing::WEST:
 				$minX = 1 - $thickness;
 				$maxX = 1;
 				$minZ = -$horizontalStart;
 				$maxZ = $minZ + $width;
 				break;
-			case Vector3::SIDE_EAST:
+			case Facing::EAST:
 				$minX = 0;
 				$maxX = $thickness;
 				$maxZ = $horizontalStart + 1;
@@ -249,30 +241,15 @@ class Painting extends Entity{
 		$horizontalStart = (int) (ceil($width / 2) - 1);
 		$verticalStart = (int) (ceil($height / 2) - 1);
 
-		switch($facing){
-			case Vector3::SIDE_NORTH:
-				$rotatedFace = Vector3::SIDE_WEST;
-				break;
-			case Vector3::SIDE_WEST:
-				$rotatedFace = Vector3::SIDE_SOUTH;
-				break;
-			case Vector3::SIDE_SOUTH:
-				$rotatedFace = Vector3::SIDE_EAST;
-				break;
-			case Vector3::SIDE_EAST:
-				$rotatedFace = Vector3::SIDE_NORTH;
-				break;
-			default:
-				return false;
-		}
+		$rotatedFace = Facing::rotateY($facing, false);
 
-		$oppositeSide = Vector3::getOppositeSide($facing);
+		$oppositeSide = Facing::opposite($facing);
 
-		$startPos = $blockIn->asVector3()->getSide(Vector3::getOppositeSide($rotatedFace), $horizontalStart)->getSide(Vector3::SIDE_DOWN, $verticalStart);
+		$startPos = $blockIn->asVector3()->getSide(Facing::opposite($rotatedFace), $horizontalStart)->getSide(Facing::DOWN, $verticalStart);
 
 		for($w = 0; $w < $width; ++$w){
 			for($h = 0; $h < $height; ++$h){
-				$pos = $startPos->getSide($rotatedFace, $w)->getSide(Vector3::SIDE_UP, $h);
+				$pos = $startPos->getSide($rotatedFace, $w)->getSide(Facing::UP, $h);
 
 				$block = $level->getBlockAt($pos->x, $pos->y, $pos->z);
 				if($block->isSolid() or !$block->getSide($oppositeSide)->isSolid()){

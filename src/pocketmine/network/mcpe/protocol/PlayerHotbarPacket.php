@@ -25,13 +25,13 @@ namespace pocketmine\network\mcpe\protocol;
 
 #include <rules/DataPacket.h>
 
-use pocketmine\network\mcpe\NetworkSession;
+use pocketmine\network\mcpe\handler\SessionHandler;
 use pocketmine\network\mcpe\protocol\types\ContainerIds;
 
 /**
  * One of the most useless packets.
  */
-class PlayerHotbarPacket extends DataPacket{
+class PlayerHotbarPacket extends DataPacket implements ClientboundPacket, ServerboundPacket{
 	public const NETWORK_ID = ProtocolInfo::PLAYER_HOTBAR_PACKET;
 
 	/** @var int */
@@ -41,19 +41,19 @@ class PlayerHotbarPacket extends DataPacket{
 	/** @var bool */
 	public $selectHotbarSlot = true;
 
-	protected function decodePayload(){
+	protected function decodePayload() : void{
 		$this->selectedHotbarSlot = $this->getUnsignedVarInt();
 		$this->windowId = $this->getByte();
 		$this->selectHotbarSlot = $this->getBool();
 	}
 
-	protected function encodePayload(){
+	protected function encodePayload() : void{
 		$this->putUnsignedVarInt($this->selectedHotbarSlot);
 		$this->putByte($this->windowId);
 		$this->putBool($this->selectHotbarSlot);
 	}
 
-	public function handle(NetworkSession $session) : bool{
-		return $session->handlePlayerHotbar($this);
+	public function handle(SessionHandler $handler) : bool{
+		return $handler->handlePlayerHotbar($this);
 	}
 }

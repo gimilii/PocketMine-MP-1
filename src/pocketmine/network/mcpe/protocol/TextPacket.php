@@ -26,9 +26,10 @@ namespace pocketmine\network\mcpe\protocol;
 #include <rules/DataPacket.h>
 
 
-use pocketmine\network\mcpe\NetworkSession;
+use pocketmine\network\mcpe\handler\SessionHandler;
+use function count;
 
-class TextPacket extends DataPacket{
+class TextPacket extends DataPacket implements ClientboundPacket, ServerboundPacket{
 	public const NETWORK_ID = ProtocolInfo::TEXT_PACKET;
 
 	public const TYPE_RAW = 0;
@@ -40,6 +41,7 @@ class TextPacket extends DataPacket{
 	public const TYPE_SYSTEM = 6;
 	public const TYPE_WHISPER = 7;
 	public const TYPE_ANNOUNCEMENT = 8;
+	public const TYPE_JSON = 9;
 
 	/** @var int */
 	public $type;
@@ -47,10 +49,6 @@ class TextPacket extends DataPacket{
 	public $needsTranslation = false;
 	/** @var string */
 	public $sourceName;
-	/** @var string */
-	public $sourceThirdPartyName = "";
-	/** @var int */
-	public $sourcePlatform = 0;
 	/** @var string */
 	public $message;
 	/** @var string[] */
@@ -60,7 +58,7 @@ class TextPacket extends DataPacket{
 	/** @var string */
 	public $platformChatId = "";
 
-	protected function decodePayload(){
+	protected function decodePayload() : void{
 		$this->type = $this->getByte();
 		$this->needsTranslation = $this->getBool();
 		switch($this->type){
@@ -69,11 +67,10 @@ class TextPacket extends DataPacket{
 			/** @noinspection PhpMissingBreakStatementInspection */
 			case self::TYPE_ANNOUNCEMENT:
 				$this->sourceName = $this->getString();
-				$this->sourceThirdPartyName = $this->getString();
-				$this->sourcePlatform = $this->getVarInt();
 			case self::TYPE_RAW:
 			case self::TYPE_TIP:
 			case self::TYPE_SYSTEM:
+			case self::TYPE_JSON:
 				$this->message = $this->getString();
 				break;
 
@@ -92,7 +89,7 @@ class TextPacket extends DataPacket{
 		$this->platformChatId = $this->getString();
 	}
 
-	protected function encodePayload(){
+	protected function encodePayload() : void{
 		$this->putByte($this->type);
 		$this->putBool($this->needsTranslation);
 		switch($this->type){
@@ -101,11 +98,10 @@ class TextPacket extends DataPacket{
 			/** @noinspection PhpMissingBreakStatementInspection */
 			case self::TYPE_ANNOUNCEMENT:
 				$this->putString($this->sourceName);
-				$this->putString($this->sourceThirdPartyName);
-				$this->putVarInt($this->sourcePlatform);
 			case self::TYPE_RAW:
 			case self::TYPE_TIP:
 			case self::TYPE_SYSTEM:
+			case self::TYPE_JSON:
 				$this->putString($this->message);
 				break;
 
@@ -124,8 +120,7 @@ class TextPacket extends DataPacket{
 		$this->putString($this->platformChatId);
 	}
 
-	public function handle(NetworkSession $session) : bool{
-		return $session->handleText($this);
+	public function handle(SessionHandler $handler) : bool{
+		return $handler->handleText($this);
 	}
-
 }

@@ -30,6 +30,7 @@ use pocketmine\lang\TranslationContainer;
 use pocketmine\level\Level;
 use pocketmine\Player;
 use pocketmine\utils\TextFormat;
+use function count;
 
 class TimeCommand extends VanillaCommand{
 
@@ -53,10 +54,8 @@ class TimeCommand extends VanillaCommand{
 
 				return true;
 			}
-			foreach($sender->getServer()->getLevels() as $level){
-				$level->checkTime();
+			foreach($sender->getServer()->getLevelManager()->getLevels() as $level){
 				$level->startTime();
-				$level->checkTime();
 			}
 			Command::broadcastCommandMessage($sender, "Restarted the time");
 			return true;
@@ -66,10 +65,8 @@ class TimeCommand extends VanillaCommand{
 
 				return true;
 			}
-			foreach($sender->getServer()->getLevels() as $level){
-				$level->checkTime();
+			foreach($sender->getServer()->getLevelManager()->getLevels() as $level){
 				$level->stopTime();
-				$level->checkTime();
 			}
 			Command::broadcastCommandMessage($sender, "Stopped the time");
 			return true;
@@ -82,7 +79,7 @@ class TimeCommand extends VanillaCommand{
 			if($sender instanceof Player){
 				$level = $sender->getLevel();
 			}else{
-				$level = $sender->getServer()->getDefaultLevel();
+				$level = $sender->getServer()->getLevelManager()->getDefaultLevel();
 			}
 			$sender->sendMessage(new TranslationContainer("commands.time.query", [$level->getTime()]));
 			return true;
@@ -108,10 +105,8 @@ class TimeCommand extends VanillaCommand{
 				$value = $this->getInteger($sender, $args[1], 0);
 			}
 
-			foreach($sender->getServer()->getLevels() as $level){
-				$level->checkTime();
+			foreach($sender->getServer()->getLevelManager()->getLevels() as $level){
 				$level->setTime($value);
-				$level->checkTime();
 			}
 			Command::broadcastCommandMessage($sender, new TranslationContainer("commands.time.set", [$value]));
 		}elseif($args[0] === "add"){
@@ -122,10 +117,8 @@ class TimeCommand extends VanillaCommand{
 			}
 
 			$value = $this->getInteger($sender, $args[1], 0);
-			foreach($sender->getServer()->getLevels() as $level){
-				$level->checkTime();
+			foreach($sender->getServer()->getLevelManager()->getLevels() as $level){
 				$level->setTime($level->getTime() + $value);
-				$level->checkTime();
 			}
 			Command::broadcastCommandMessage($sender, new TranslationContainer("commands.time.added", [$value]));
 		}else{

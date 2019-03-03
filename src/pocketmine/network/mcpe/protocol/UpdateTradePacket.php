@@ -27,10 +27,10 @@ namespace pocketmine\network\mcpe\protocol;
 #include <rules/DataPacket.h>
 
 
-use pocketmine\network\mcpe\NetworkSession;
+use pocketmine\network\mcpe\handler\SessionHandler;
 use pocketmine\network\mcpe\protocol\types\WindowTypes;
 
-class UpdateTradePacket extends DataPacket{
+class UpdateTradePacket extends DataPacket implements ClientboundPacket{
 	public const NETWORK_ID = ProtocolInfo::UPDATE_TRADE_PACKET;
 
 	//TODO: find fields
@@ -43,6 +43,8 @@ class UpdateTradePacket extends DataPacket{
 	public $varint1;
 	/** @var int */
 	public $varint2;
+	/** @var int */
+	public $varint3;
 	/** @var bool */
 	public $isWilling;
 	/** @var int */
@@ -54,11 +56,12 @@ class UpdateTradePacket extends DataPacket{
 	/** @var string */
 	public $offers;
 
-	protected function decodePayload(){
+	protected function decodePayload() : void{
 		$this->windowId = $this->getByte();
 		$this->windowType = $this->getByte();
 		$this->varint1 = $this->getVarInt();
 		$this->varint2 = $this->getVarInt();
+		$this->varint3 = $this->getVarInt();
 		$this->isWilling = $this->getBool();
 		$this->traderEid = $this->getEntityUniqueId();
 		$this->playerEid = $this->getEntityUniqueId();
@@ -66,11 +69,12 @@ class UpdateTradePacket extends DataPacket{
 		$this->offers = $this->getRemaining();
 	}
 
-	protected function encodePayload(){
+	protected function encodePayload() : void{
 		$this->putByte($this->windowId);
 		$this->putByte($this->windowType);
 		$this->putVarInt($this->varint1);
 		$this->putVarInt($this->varint2);
+		$this->putVarInt($this->varint3);
 		$this->putBool($this->isWilling);
 		$this->putEntityUniqueId($this->traderEid);
 		$this->putEntityUniqueId($this->playerEid);
@@ -78,7 +82,7 @@ class UpdateTradePacket extends DataPacket{
 		$this->put($this->offers);
 	}
 
-	public function handle(NetworkSession $session) : bool{
-		return $session->handleUpdateTrade($this);
+	public function handle(SessionHandler $handler) : bool{
+		return $handler->handleUpdateTrade($this);
 	}
 }

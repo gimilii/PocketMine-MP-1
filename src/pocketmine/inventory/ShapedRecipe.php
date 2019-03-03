@@ -25,6 +25,12 @@ namespace pocketmine\inventory;
 
 use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
+use function array_map;
+use function array_values;
+use function count;
+use function implode;
+use function strlen;
+use function strpos;
 
 class ShapedRecipe implements CraftingRecipe{
 	/** @var string[] */
@@ -46,11 +52,11 @@ class ShapedRecipe implements CraftingRecipe{
 	 *     Array of 1, 2, or 3 strings representing the rows of the recipe.
 	 *     This accepts an array of 1, 2 or 3 strings. Each string should be of the same length and must be at most 3
 	 *     characters long. Each character represents a unique type of ingredient. Spaces are interpreted as air.
-	 * @param Item[] $ingredients <br>
+	 * @param Item[]   $ingredients <br>
 	 *     Char => Item map of items to be set into the shape.
 	 *     This accepts an array of Items, indexed by character. Every unique character (except space) in the shape
 	 *     array MUST have a corresponding item in this list. Space character is automatically treated as air.
-	 * @param Item[] $results List of items that this recipe produces when crafted.
+	 * @param Item[]   $results List of items that this recipe produces when crafted.
 	 *
 	 * Note: Recipes **do not** need to be square. Do NOT add padding for empty rows/columns.
 	 */
@@ -170,7 +176,7 @@ class ShapedRecipe implements CraftingRecipe{
 	 */
 	public function getIngredient(int $x, int $y) : Item{
 		$exists = $this->ingredientList[$this->shape[$y]{$x}] ?? null;
-		return $exists !== null ? clone $exists : ItemFactory::get(Item::AIR, 0, 0);
+		return $exists !== null ? clone $exists : ItemFactory::air();
 	}
 
 	/**
@@ -179,10 +185,6 @@ class ShapedRecipe implements CraftingRecipe{
 	 */
 	public function getShape() : array{
 		return $this->shape;
-	}
-
-	public function registerToCraftingManager(CraftingManager $manager) : void{
-		$manager->registerShapedRecipe($this);
 	}
 
 	/**
@@ -197,7 +199,7 @@ class ShapedRecipe implements CraftingRecipe{
 
 				$given = $grid->getIngredient($reverse ? $this->width - $x - 1 : $x, $y);
 				$required = $this->getIngredient($x, $y);
-				if(!$required->equals($given, !$required->hasAnyDamageValue(), $required->hasCompoundTag()) or $required->getCount() > $given->getCount()){
+				if(!$required->equals($given, !$required->hasAnyDamageValue(), $required->hasNamedTag()) or $required->getCount() > $given->getCount()){
 					return false;
 				}
 			}

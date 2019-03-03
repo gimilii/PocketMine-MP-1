@@ -23,69 +23,65 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
+use pocketmine\block\utils\BlockDataValidator;
 use pocketmine\item\Item;
+use pocketmine\math\Facing;
 use pocketmine\math\Vector3;
 use pocketmine\Player;
 
 class Torch extends Flowable{
 
-	protected $id = self::TORCH;
+	/** @var int */
+	protected $facing = Facing::UP;
 
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
+	protected function writeStateToMeta() : int{
+		return 6 - $this->facing;
+	}
+
+	public function readStateFromData(int $id, int $stateMeta) : void{
+		$this->facing = $stateMeta === 5 ? Facing::UP : BlockDataValidator::readHorizontalFacing(6 - $stateMeta);
+	}
+
+	public function getStateBitmask() : int{
+		return 0b111;
 	}
 
 	public function getLightLevel() : int{
 		return 14;
 	}
 
-	public function getName() : string{
-		return "Torch";
-	}
-
 	public function onNearbyBlockChange() : void{
-		$below = $this->getSide(Vector3::SIDE_DOWN);
-		$side = $this->getDamage();
-		$faces = [
-			0 => Vector3::SIDE_DOWN,
-			1 => Vector3::SIDE_WEST,
-			2 => Vector3::SIDE_EAST,
-			3 => Vector3::SIDE_NORTH,
-			4 => Vector3::SIDE_SOUTH,
-			5 => Vector3::SIDE_DOWN
-		];
+		$below = $this->getSide(Facing::DOWN);
+		$face = Facing::opposite($this->facing);
 
-		if($this->getSide($faces[$side])->isTransparent() and !($side === Vector3::SIDE_DOWN and ($below->getId() === self::FENCE or $below->getId() === self::COBBLESTONE_WALL))){
+		if($this->getSide($face)->isTransparent() and !($face === Facing::DOWN and ($below->getId() === self::FENCE or $below->getId() === self::COBBLESTONE_WALL))){
 			$this->getLevel()->useBreakOn($this);
 		}
 	}
 
-	public function place(Item $item, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector, Player $player = null) : bool{
-		$below = $this->getSide(Vector3::SIDE_DOWN);
-
-		if(!$blockClicked->isTransparent() and $face !== Vector3::SIDE_DOWN){
-			$faces = [
-				Vector3::SIDE_UP => 5,
-				Vector3::SIDE_NORTH => 4,
-				Vector3::SIDE_SOUTH => 3,
-				Vector3::SIDE_WEST => 2,
-				Vector3::SIDE_EAST => 1
+	public function place(Item $item, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector, ?Player $player = null) : bool{
+		if($blockClicked->canBeReplaced() and !$blockClicked->getSide(Facing::DOWN)->isTransparent()){
+			$this->facing = Facing::UP;
+			return parent::place($item, $blockReplace, $blockClicked, $face, $clickVector, $player);
+		}elseif($face !== Facing::DOWN and (!$blockClicked->isTransparent() or ($face === Facing::UP and ($blockClicked->getId() === self::FENCE or $blockClicked->getId() === self::COBBLESTONE_WALL)))){
+			$this->facing = $face;
+			return parent::place($item, $blockReplace, $blockClicked, $face, $clickVector, $player);
+		}else{
+			static $faces = [
+				Facing::SOUTH,
+				Facing::WEST,
+				Facing::NORTH,
+				Facing::EAST,
+				Facing::DOWN
 			];
-			$this->meta = $faces[$face];
-			$this->getLevel()->setBlock($blockReplace, $this, true, true);
-
-			return true;
-		}elseif(!$below->isTransparent() or $below->getId() === self::FENCE or $below->getId() === self::COBBLESTONE_WALL){
-			$this->meta = 0;
-			$this->getLevel()->setBlock($blockReplace, $this, true, true);
-
-			return true;
+			foreach($faces as $side){
+				$block = $this->getSide($side);
+				if(!$block->isTransparent()){
+					$this->facing = Facing::opposite($side);
+					return parent::place($item, $blockReplace, $blockClicked, $face, $clickVector, $player);
+				}
+			}
 		}
-
 		return false;
-	}
-
-	public function getVariantBitmask() : int{
-		return 0;
 	}
 }

@@ -24,6 +24,8 @@ declare(strict_types=1);
 namespace pocketmine\event\player;
 
 use pocketmine\event\Cancellable;
+use pocketmine\event\CancellableTrait;
+use pocketmine\permission\PermissionManager;
 use pocketmine\Player;
 use pocketmine\Server;
 
@@ -31,6 +33,8 @@ use pocketmine\Server;
  * Called when a player chats something
  */
 class PlayerChatEvent extends PlayerEvent implements Cancellable{
+	use CancellableTrait;
+
 	/** @var string */
 	protected $message;
 
@@ -48,14 +52,14 @@ class PlayerChatEvent extends PlayerEvent implements Cancellable{
 	 * @param string   $format
 	 * @param Player[] $recipients
 	 */
-	public function __construct(Player $player, string $message, string $format = "chat.type.text", array $recipients = null){
+	public function __construct(Player $player, string $message, string $format = "chat.type.text", ?array $recipients = null){
 		$this->player = $player;
 		$this->message = $message;
 
 		$this->format = $format;
 
 		if($recipients === null){
-			$this->recipients = Server::getInstance()->getPluginManager()->getPermissionSubscriptions(Server::BROADCAST_CHANNEL_USERS);
+			$this->recipients = PermissionManager::getInstance()->getPermissionSubscriptions(Server::BROADCAST_CHANNEL_USERS);
 		}else{
 			$this->recipients = $recipients;
 		}
@@ -71,7 +75,7 @@ class PlayerChatEvent extends PlayerEvent implements Cancellable{
 	/**
 	 * @param string $message
 	 */
-	public function setMessage(string $message){
+	public function setMessage(string $message) : void{
 		$this->message = $message;
 	}
 
@@ -80,7 +84,7 @@ class PlayerChatEvent extends PlayerEvent implements Cancellable{
 	 *
 	 * @param Player $player
 	 */
-	public function setPlayer(Player $player){
+	public function setPlayer(Player $player) : void{
 		$this->player = $player;
 	}
 
@@ -94,7 +98,7 @@ class PlayerChatEvent extends PlayerEvent implements Cancellable{
 	/**
 	 * @param string $format
 	 */
-	public function setFormat(string $format){
+	public function setFormat(string $format) : void{
 		$this->format = $format;
 	}
 
@@ -108,7 +112,7 @@ class PlayerChatEvent extends PlayerEvent implements Cancellable{
 	/**
 	 * @param Player[] $recipients
 	 */
-	public function setRecipients(array $recipients){
+	public function setRecipients(array $recipients) : void{
 		$this->recipients = $recipients;
 	}
 }

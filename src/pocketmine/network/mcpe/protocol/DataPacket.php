@@ -25,32 +25,34 @@ namespace pocketmine\network\mcpe\protocol;
 
 #include <rules/DataPacket.h>
 
+use pocketmine\network\BadPacketException;
 use pocketmine\network\mcpe\NetworkBinaryStream;
-use pocketmine\network\mcpe\NetworkSession;
+use pocketmine\utils\BinaryDataException;
 use pocketmine\utils\Utils;
+use function bin2hex;
+use function get_class;
+use function is_object;
+use function is_string;
+use function method_exists;
 
-abstract class DataPacket extends NetworkBinaryStream{
+abstract class DataPacket extends NetworkBinaryStream implements Packet{
 
 	public const NETWORK_ID = 0;
 
 	/** @var bool */
-	public $isEncoded = false;
+	private $isEncoded = false;
 
 	/** @var int */
 	public $senderSubId = 0;
 	/** @var int */
 	public $recipientSubId = 0;
 
-	public function pid(){
+	public function pid() : int{
 		return $this::NETWORK_ID;
 	}
 
 	public function getName() : string{
 		return (new \ReflectionClass($this))->getShortName();
-	}
-
-	public function canBeBatched() : bool{
-		return true;
 	}
 
 	public function canBeSentBeforeLogin() : bool{
@@ -65,67 +67,58 @@ abstract class DataPacket extends NetworkBinaryStream{
 		return false;
 	}
 
-	public function decode(){
-		$this->offset = 0;
-		$this->decodeHeader();
-		$this->decodePayload();
-	}
-
-	protected function decodeHeader(){
-		$pid = $this->getUnsignedVarInt();
-		assert($pid === static::NETWORK_ID);
-
-		$this->senderSubId = $this->getByte();
-		$this->recipientSubId = $this->getByte();
-		assert($this->senderSubId === 0 and $this->recipientSubId === 0, "Got unexpected non-zero split-screen bytes (byte1: $this->senderSubId, byte2: $this->recipientSubId");
+	/**
+	 * @throws BadPacketException
+	 */
+	final public function decode() : void{
+		$this->rewind();
+		try{
+			$this->decodeHeader();
+			$this->decodePayload();
+		}catch(BinaryDataException | BadPacketException $e){
+			throw new BadPacketException($this->getName() . ": " . $e->getMessage(), 0, $e);
+		}
 	}
 
 	/**
-	 * Note for plugin developers: If you're adding your own packets, you should perform decoding in here.
+	 * @throws BinaryDataException
+	 * @throws \UnexpectedValueException
 	 */
-	protected function decodePayload(){
-
+	protected function decodeHeader() : void{
+		$pid = $this->getUnsignedVarInt();
+		if($pid !== static::NETWORK_ID){
+			//TODO: this means a logical error in the code, but how to prevent it from happening?
+			throw new \UnexpectedValueException("Expected " . static::NETWORK_ID . " for packet ID, got $pid");
+		}
 	}
 
-	public function encode(){
+	/**
+	 * Decodes the packet body, without the packet ID or other generic header fields.
+	 *
+	 * @throws BadPacketException
+	 * @throws BinaryDataException
+	 */
+	abstract protected function decodePayload() : void;
+
+	final public function encode() : void{
 		$this->reset();
 		$this->encodeHeader();
 		$this->encodePayload();
 		$this->isEncoded = true;
 	}
 
-	protected function encodeHeader(){
+	final public function isEncoded() : bool{
+		return $this->isEncoded;
+	}
+
+	protected function encodeHeader() : void{
 		$this->putUnsignedVarInt(static::NETWORK_ID);
-
-		$this->putByte($this->senderSubId);
-		$this->putByte($this->recipientSubId);
 	}
 
 	/**
-	 * Note for plugin developers: If you're adding your own packets, you should perform encoding in here.
+	 * Encodes the packet body, without the packet ID or other generic header fields.
 	 */
-	protected function encodePayload(){
-
-	}
-
-	/**
-	 * Performs handling for this packet. Usually you'll want an appropriately named method in the NetworkSession for this.
-	 *
-	 * This method returns a bool to indicate whether the packet was handled or not. If the packet was unhandled, a debug message will be logged with a hexdump of the packet.
-	 * Typically this method returns the return value of the handler in the supplied NetworkSession. See other packets for examples how to implement this.
-	 *
-	 * @param NetworkSession $session
-	 *
-	 * @return bool true if the packet was handled successfully, false if not.
-	 */
-	abstract public function handle(NetworkSession $session) : bool;
-
-	public function clean(){
-		$this->buffer = null;
-		$this->isEncoded = false;
-		$this->offset = 0;
-		return $this;
-	}
+	abstract protected function encodePayload() : void;
 
 	public function __debugInfo(){
 		$data = [];
@@ -140,5 +133,13 @@ abstract class DataPacket extends NetworkBinaryStream{
 		}
 
 		return $data;
+	}
+
+	public function __get($name){
+		throw new \Error("Undefined property: " . get_class($this) . "::\$" . $name);
+	}
+
+	public function __set($name, $value){
+		throw new \Error("Undefined property: " . get_class($this) . "::\$" . $name);
 	}
 }

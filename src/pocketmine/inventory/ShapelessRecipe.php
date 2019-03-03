@@ -24,6 +24,8 @@ declare(strict_types=1);
 namespace pocketmine\inventory;
 
 use pocketmine\item\Item;
+use function array_map;
+use function count;
 
 class ShapelessRecipe implements CraftingRecipe{
 	/** @var Item[] */
@@ -81,7 +83,7 @@ class ShapelessRecipe implements CraftingRecipe{
 			if($item->getCount() <= 0){
 				break;
 			}
-			if($ingredient->equals($item, !$item->hasAnyDamageValue(), $item->hasCompoundTag())){
+			if($ingredient->equals($item, !$item->hasAnyDamageValue(), $item->hasNamedTag())){
 				unset($this->ingredients[$index]);
 				$item->pop();
 			}
@@ -109,10 +111,6 @@ class ShapelessRecipe implements CraftingRecipe{
 		return $count;
 	}
 
-	public function registerToCraftingManager(CraftingManager $manager) : void{
-		$manager->registerShapelessRecipe($this);
-	}
-
 	/**
 	 * @param CraftingGrid $grid
 	 *
@@ -124,7 +122,7 @@ class ShapelessRecipe implements CraftingRecipe{
 
 		foreach($this->ingredients as $needItem){
 			foreach($input as $j => $haveItem){
-				if($haveItem->equals($needItem, !$needItem->hasAnyDamageValue(), $needItem->hasCompoundTag()) and $haveItem->getCount() >= $needItem->getCount()){
+				if($haveItem->equals($needItem, !$needItem->hasAnyDamageValue(), $needItem->hasNamedTag()) and $haveItem->getCount() >= $needItem->getCount()){
 					unset($input[$j]);
 					continue 2;
 				}

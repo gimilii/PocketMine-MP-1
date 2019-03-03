@@ -25,11 +25,15 @@ namespace pocketmine\event\entity;
 
 use pocketmine\entity\Entity;
 use pocketmine\event\Cancellable;
+use pocketmine\event\CancellableTrait;
+use function array_sum;
 
 /**
  * Called when an entity takes damage.
  */
 class EntityDamageEvent extends EntityEvent implements Cancellable{
+	use CancellableTrait;
+
 	public const MODIFIER_ARMOR = 1;
 	public const MODIFIER_STRENGTH = 2;
 	public const MODIFIER_WEAKNESS = 3;
@@ -38,6 +42,7 @@ class EntityDamageEvent extends EntityEvent implements Cancellable{
 	public const MODIFIER_ARMOR_ENCHANTMENTS = 6;
 	public const MODIFIER_CRITICAL = 7;
 	public const MODIFIER_TOTEM = 8;
+	public const MODIFIER_WEAPON_ENCHANTMENTS = 9;
 
 	public const CAUSE_CONTACT = 0;
 	public const CAUSE_ENTITY_ATTACK = 1;
@@ -68,12 +73,15 @@ class EntityDamageEvent extends EntityEvent implements Cancellable{
 	/** @var float[] */
 	private $originals;
 
+	/** @var int */
+	private $attackCooldown = 10;
+
 
 	/**
-	 * @param Entity        $entity
-	 * @param int           $cause
-	 * @param float         $damage
-	 * @param float|float[] $modifiers
+	 * @param Entity  $entity
+	 * @param int     $cause
+	 * @param float   $damage
+	 * @param float[] $modifiers
 	 */
 	public function __construct(Entity $entity, int $cause, float $damage, array $modifiers = []){
 		$this->entity = $entity;
@@ -156,7 +164,7 @@ class EntityDamageEvent extends EntityEvent implements Cancellable{
 	 * @param float $damage
 	 * @param int   $type
 	 */
-	public function setModifier(float $damage, int $type){
+	public function setModifier(float $damage, int $type) : void{
 		$this->modifiers[$type] = $damage;
 	}
 
@@ -195,5 +203,25 @@ class EntityDamageEvent extends EntityEvent implements Cancellable{
 		}
 
 		return true;
+	}
+
+	/**
+	 * Returns the cooldown in ticks before the target entity can be attacked again.
+	 *
+	 * @return int
+	 */
+	public function getAttackCooldown() : int{
+		return $this->attackCooldown;
+	}
+
+	/**
+	 * Sets the cooldown in ticks before the target entity can be attacked again.
+	 *
+	 * NOTE: This value is not used in non-Living entities
+	 *
+	 * @param int $attackCooldown
+	 */
+	public function setAttackCooldown(int $attackCooldown) : void{
+		$this->attackCooldown = $attackCooldown;
 	}
 }

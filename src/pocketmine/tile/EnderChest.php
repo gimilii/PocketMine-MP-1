@@ -27,7 +27,7 @@ use pocketmine\nbt\tag\CompoundTag;
 
 class EnderChest extends Spawnable{
 
-	protected function readSaveData(CompoundTag $nbt) : void{
+	public function readSaveData(CompoundTag $nbt) : void{
 
 	}
 
@@ -38,5 +38,4 @@ class EnderChest extends Spawnable{
 	protected function addAdditionalSpawnData(CompoundTag $nbt) : void{
 
 	}
-
 }

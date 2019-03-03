@@ -25,13 +25,15 @@ namespace pocketmine\event\player;
 
 use pocketmine\entity\Human;
 use pocketmine\event\Cancellable;
+use pocketmine\event\CancellableTrait;
 use pocketmine\event\entity\EntityEvent;
 
 /**
  * Called when a player gains or loses XP levels and/or progress.
  */
 class PlayerExperienceChangeEvent extends EntityEvent implements Cancellable{
-	public static $handlerList = null;
+	use CancellableTrait;
+
 	/** @var Human */
 	protected $entity;
 	/** @var int */

@@ -25,10 +25,13 @@ namespace pocketmine\event\inventory;
 
 use pocketmine\event\block\BlockEvent;
 use pocketmine\event\Cancellable;
+use pocketmine\event\CancellableTrait;
 use pocketmine\item\Item;
 use pocketmine\tile\Furnace;
 
 class FurnaceSmeltEvent extends BlockEvent implements Cancellable{
+	use CancellableTrait;
+
 	/** @var Furnace */
 	private $furnace;
 	/** @var Item */
@@ -38,8 +41,8 @@ class FurnaceSmeltEvent extends BlockEvent implements Cancellable{
 
 	/**
 	 * @param Furnace $furnace
-	 * @param Item $source
-	 * @param Item $result
+	 * @param Item    $source
+	 * @param Item    $result
 	 */
 	public function __construct(Furnace $furnace, Item $source, Item $result){
 		parent::__construct($furnace->getBlock());
@@ -73,7 +76,7 @@ class FurnaceSmeltEvent extends BlockEvent implements Cancellable{
 	/**
 	 * @param Item $result
 	 */
-	public function setResult(Item $result){
+	public function setResult(Item $result) : void{
 		$this->result = $result;
 	}
 }

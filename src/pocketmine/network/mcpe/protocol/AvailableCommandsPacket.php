@@ -25,12 +25,21 @@ namespace pocketmine\network\mcpe\protocol;
 
 #include <rules/DataPacket.h>
 
-use pocketmine\network\mcpe\NetworkSession;
+use pocketmine\network\BadPacketException;
+use pocketmine\network\mcpe\handler\SessionHandler;
 use pocketmine\network\mcpe\protocol\types\CommandData;
 use pocketmine\network\mcpe\protocol\types\CommandEnum;
 use pocketmine\network\mcpe\protocol\types\CommandParameter;
+use pocketmine\utils\BinaryDataException;
+use function array_flip;
+use function array_keys;
+use function array_map;
+use function array_search;
+use function array_values;
+use function count;
+use function dechex;
 
-class AvailableCommandsPacket extends DataPacket{
+class AvailableCommandsPacket extends DataPacket implements ClientboundPacket{
 	public const NETWORK_ID = ProtocolInfo::AVAILABLE_COMMANDS_PACKET;
 
 
@@ -103,7 +112,14 @@ class AvailableCommandsPacket extends DataPacket{
 	 */
 	public $commandData = [];
 
-	protected function decodePayload(){
+	/**
+	 * @var CommandEnum[]
+	 * List of dynamic command enums, also referred to as "soft" enums. These can by dynamically updated mid-game
+	 * without resending this packet.
+	 */
+	public $softEnums = [];
+
+	protected function decodePayload() : void{
 		for($i = 0, $this->enumValuesCount = $this->getUnsignedVarInt(); $i < $this->enumValuesCount; ++$i){
 			$this->enumValues[] = $this->getString();
 		}
@@ -119,21 +135,50 @@ class AvailableCommandsPacket extends DataPacket{
 		for($i = 0, $count = $this->getUnsignedVarInt(); $i < $count; ++$i){
 			$this->commandData[] = $this->getCommandData();
 		}
+
+		for($i = 0, $count = $this->getUnsignedVarInt(); $i < $count; ++$i){
+			$this->softEnums[] = $this->getSoftEnum();
+		}
 	}
 
+	/**
+	 * @return CommandEnum
+	 * @throws BadPacketException
+	 * @throws BinaryDataException
+	 */
 	protected function getEnum() : CommandEnum{
 		$retval = new CommandEnum();
 		$retval->enumName = $this->getString();
 
 		for($i = 0, $count = $this->getUnsignedVarInt(); $i < $count; ++$i){
+			$index = $this->getEnumValueIndex();
+			if(!isset($this->enumValues[$index])){
+				throw new BadPacketException("Invalid enum value index $index");
+			}
 			//Get the enum value from the initial pile of mess
-			$retval->enumValues[] = $this->enumValues[$this->getEnumValueIndex()];
+			$retval->enumValues[] = $this->enumValues[$index];
 		}
 
 		return $retval;
 	}
 
-	protected function putEnum(CommandEnum $enum){
+	/**
+	 * @return CommandEnum
+	 * @throws BinaryDataException
+	 */
+	protected function getSoftEnum() : CommandEnum{
+		$retval = new CommandEnum();
+		$retval->enumName = $this->getString();
+
+		for($i = 0, $count = $this->getUnsignedVarInt(); $i < $count; ++$i){
+			//Get the enum value from the initial pile of mess
+			$retval->enumValues[] = $this->getString();
+		}
+
+		return $retval;
+	}
+
+	protected function putEnum(CommandEnum $enum) : void{
 		$this->putString($enum->enumName);
 
 		$this->putUnsignedVarInt(count($enum->enumValues));
@@ -147,6 +192,19 @@ class AvailableCommandsPacket extends DataPacket{
 		}
 	}
 
+	protected function putSoftEnum(CommandEnum $enum) : void{
+		$this->putString($enum->enumName);
+
+		$this->putUnsignedVarInt(count($enum->enumValues));
+		foreach($enum->enumValues as $value){
+			$this->putString($value);
+		}
+	}
+
+	/**
+	 * @return int
+	 * @throws BinaryDataException
+	 */
 	protected function getEnumValueIndex() : int{
 		if($this->enumValuesCount < 256){
 			return $this->getByte();
@@ -157,7 +215,7 @@ class AvailableCommandsPacket extends DataPacket{
 		}
 	}
 
-	protected function putEnumValueIndex(int $index){
+	protected function putEnumValueIndex(int $index) : void{
 		if($this->enumValuesCount < 256){
 			$this->putByte($index);
 		}elseif($this->enumValuesCount < 65536){
@@ -167,6 +225,11 @@ class AvailableCommandsPacket extends DataPacket{
 		}
 	}
 
+	/**
+	 * @return CommandData
+	 * @throws BadPacketException
+	 * @throws BinaryDataException
+	 */
 	protected function getCommandData() : CommandData{
 		$retval = new CommandData();
 		$retval->commandName = $this->getString();
@@ -185,13 +248,17 @@ class AvailableCommandsPacket extends DataPacket{
 				if($parameter->paramType & self::ARG_FLAG_ENUM){
 					$index = ($parameter->paramType & 0xffff);
 					$parameter->enum = $this->enums[$index] ?? null;
-
-					assert($parameter->enum !== null, "expected enum at $index, but got none");
-				}elseif(($parameter->paramType & self::ARG_FLAG_VALID) === 0){ //postfix (guessing)
+					if($parameter->enum === null){
+						throw new BadPacketException("expected enum at $index, but got none");
+					}
+				}elseif($parameter->paramType & self::ARG_FLAG_POSTFIX){
 					$index = ($parameter->paramType & 0xffff);
 					$parameter->postfix = $this->postfixes[$index] ?? null;
-
-					assert($parameter->postfix !== null, "expected postfix at $index, but got none");
+					if($parameter->postfix === null){
+						throw new BadPacketException("expected postfix at $index, but got none");
+					}
+				}elseif(($parameter->paramType & self::ARG_FLAG_VALID) === 0){
+					throw new BadPacketException("Invalid parameter type 0x" . dechex($parameter->paramType));
 				}
 
 				$retval->overloads[$overloadIndex][$paramIndex] = $parameter;
@@ -201,7 +268,7 @@ class AvailableCommandsPacket extends DataPacket{
 		return $retval;
 	}
 
-	protected function putCommandData(CommandData $data){
+	protected function putCommandData(CommandData $data) : void{
 		$this->putString($data->commandName);
 		$this->putString($data->commandDescription);
 		$this->putByte($data->flags);
@@ -227,7 +294,7 @@ class AvailableCommandsPacket extends DataPacket{
 					if($key === false){
 						throw new \InvalidStateException("Postfix '$parameter->postfix' not in postfixes array");
 					}
-					$type = $parameter->paramType << 24 | $key;
+					$type = self::ARG_FLAG_POSTFIX | $key;
 				}else{
 					$type = $parameter->paramType;
 				}
@@ -266,19 +333,18 @@ class AvailableCommandsPacket extends DataPacket{
 				case self::ARG_TYPE_COMMAND:
 					return "command";
 			}
-		}elseif($argtype !== 0){
-			//guessed
-			$baseType = $argtype >> 24;
-			$typeName = $this->argTypeToString(self::ARG_FLAG_VALID | $baseType);
+		}elseif($argtype & self::ARG_FLAG_POSTFIX){
 			$postfix = $this->postfixes[$argtype & 0xffff];
 
-			return $typeName . " (postfix $postfix)";
+			return "int (postfix $postfix)";
+		}else{
+			throw new \UnexpectedValueException("Unknown arg type 0x" . dechex($argtype));
 		}
 
 		return "unknown ($argtype)";
 	}
 
-	protected function encodePayload(){
+	protected function encodePayload() : void{
 		$enumValuesMap = [];
 		$postfixesMap = [];
 		$enumMap = [];
@@ -294,7 +360,7 @@ class AvailableCommandsPacket extends DataPacket{
 			foreach($commandData->overloads as $overload){
 				/**
 				 * @var CommandParameter[] $overload
-				 * @var CommandParameter $parameter
+				 * @var CommandParameter   $parameter
 				 */
 				foreach($overload as $parameter){
 					if($parameter->enum !== null){
@@ -311,13 +377,13 @@ class AvailableCommandsPacket extends DataPacket{
 			}
 		}
 
-		$this->enumValues = array_map('strval', array_keys($enumValuesMap)); //stupid PHP key casting D:
+		$this->enumValues = array_map('\strval', array_keys($enumValuesMap)); //stupid PHP key casting D:
 		$this->putUnsignedVarInt($this->enumValuesCount = count($this->enumValues));
 		foreach($this->enumValues as $enumValue){
 			$this->putString($enumValue);
 		}
 
-		$this->postfixes = array_map('strval', array_keys($postfixesMap));
+		$this->postfixes = array_map('\strval', array_keys($postfixesMap));
 		$this->putUnsignedVarInt(count($this->postfixes));
 		foreach($this->postfixes as $postfix){
 			$this->putString($postfix);
@@ -334,10 +400,14 @@ class AvailableCommandsPacket extends DataPacket{
 		foreach($this->commandData as $data){
 			$this->putCommandData($data);
 		}
+
+		$this->putUnsignedVarInt(count($this->softEnums));
+		foreach($this->softEnums as $enum){
+			$this->putSoftEnum($enum);
+		}
 	}
 
-	public function handle(NetworkSession $session) : bool{
-		return $session->handleAvailableCommands($this);
+	public function handle(SessionHandler $handler) : bool{
+		return $handler->handleAvailableCommands($this);
 	}
-
 }

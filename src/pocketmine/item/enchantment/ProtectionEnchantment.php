@@ -24,6 +24,8 @@ declare(strict_types=1);
 namespace pocketmine\item\enchantment;
 
 use pocketmine\event\entity\EntityDamageEvent;
+use function array_flip;
+use function floor;
 
 class ProtectionEnchantment extends Enchantment{
 	/** @var float */
@@ -62,6 +64,7 @@ class ProtectionEnchantment extends Enchantment{
 
 	/**
 	 * Returns the base EPF this enchantment type offers for the given enchantment level.
+	 *
 	 * @param int $level
 	 *
 	 * @return int
@@ -72,6 +75,7 @@ class ProtectionEnchantment extends Enchantment{
 
 	/**
 	 * Returns whether this enchantment type offers protection from the specified damage source's cause.
+	 *
 	 * @param EntityDamageEvent $event
 	 *
 	 * @return bool

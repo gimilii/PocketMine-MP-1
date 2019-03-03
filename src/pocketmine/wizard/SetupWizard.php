@@ -27,9 +27,17 @@ declare(strict_types=1);
  */
 namespace pocketmine\wizard;
 
-use pocketmine\lang\BaseLang;
+use pocketmine\lang\Language;
+use pocketmine\lang\LanguageNotFoundException;
 use pocketmine\utils\Config;
-use pocketmine\utils\Utils;
+use pocketmine\utils\Internet;
+use pocketmine\utils\InternetException;
+use function fgets;
+use function sleep;
+use function strtolower;
+use function trim;
+use const PHP_EOL;
+use const STDIN;
 
 class SetupWizard{
 	public const DEFAULT_NAME = \pocketmine\NAME . " Server";
@@ -37,7 +45,7 @@ class SetupWizard{
 	public const DEFAULT_PLAYERS = 20;
 	public const DEFAULT_GAMEMODE = 0;
 
-	/** @var BaseLang */
+	/** @var Language */
 	private $lang;
 
 	public function __construct(){
@@ -47,8 +55,9 @@ class SetupWizard{
 	public function run() : bool{
 		$this->message(\pocketmine\NAME . " set-up wizard");
 
-		$langs = BaseLang::getLanguageList();
-		if(empty($langs)){
+		try{
+			$langs = Language::getLanguageList();
+		}catch(LanguageNotFoundException $e){
 			$this->error("No language files found, please use provided builds or clone the repository recursively.");
 			return false;
 		}
@@ -66,13 +75,18 @@ class SetupWizard{
 			}
 		}while($lang === null);
 
-		$this->lang = new BaseLang($lang);
+		$this->lang = new Language($lang);
 
 		$this->message($this->lang->get("language_has_been_selected"));
 
 		if(!$this->showLicense()){
 			return false;
 		}
+
+		//this has to happen here to prevent user avoiding agreeing to license
+		$config = new Config(\pocketmine\DATA . "server.properties", Config::PROPERTIES);
+		$config->set("language", $lang);
+		$config->save();
 
 		if(strtolower($this->getInput($this->lang->get("skip_installer"), "n", "y/N")) === "y"){
 			return true;
@@ -91,7 +105,7 @@ class SetupWizard{
 	}
 
 	private function showLicense() : bool{
-		$this->message($this->lang->get("welcome_to_pocketmine"));
+		$this->message($this->lang->translateString("welcome_to_pocketmine", [\pocketmine\NAME]));
 		echo <<<LICENSE
 
   This program is free software: you can redistribute it and/or modify
@@ -102,7 +116,7 @@ class SetupWizard{
 LICENSE;
 		$this->writeLine();
 		if(strtolower($this->getInput($this->lang->get("accept_license"), "n", "y/N")) !== "y"){
-			$this->error($this->lang->get("you_have_to_accept_the_license"));
+			$this->error($this->lang->translateString("you_have_to_accept_the_license", [\pocketmine\NAME]));
 			sleep(5);
 
 			return false;
@@ -111,13 +125,13 @@ LICENSE;
 		return true;
 	}
 
-	private function welcome(){
+	private function welcome() : void{
 		$this->message($this->lang->get("setting_up_server_now"));
 		$this->message($this->lang->get("default_values_info"));
 		$this->message($this->lang->get("server_properties"));
 	}
 
-	private function generateBaseConfig(){
+	private function generateBaseConfig() : void{
 		$config = new Config(\pocketmine\DATA . "server.properties", Config::PROPERTIES);
 
 		$config->set("motd", ($name = $this->getInput($this->lang->get("name_your_server"), self::DEFAULT_NAME)));
@@ -145,18 +159,10 @@ LICENSE;
 
 		$config->set("max-players", (int) $this->getInput($this->lang->get("max_players"), (string) self::DEFAULT_PLAYERS));
 
-		$this->message($this->lang->get("spawn_protection_info"));
-
-		if(strtolower($this->getInput($this->lang->get("spawn_protection"), "y", "Y/n")) === "n"){
-			$config->set("spawn-protection", -1);
-		}else{
-			$config->set("spawn-protection", 16);
-		}
-
 		$config->save();
 	}
 
-	private function generateUserFiles(){
+	private function generateUserFiles() : void{
 		$this->message($this->lang->get("op_info"));
 
 		$op = strtolower($this->getInput($this->lang->get("op_who"), ""));
@@ -180,7 +186,7 @@ LICENSE;
 		$config->save();
 	}
 
-	private function networkFunctions(){
+	private function networkFunctions() : void{
 		$config = new Config(\pocketmine\DATA . "server.properties", Config::PROPERTIES);
 		$this->error($this->lang->get("query_warning1"));
 		$this->error($this->lang->get("query_warning2"));
@@ -190,36 +196,30 @@ LICENSE;
 			$config->set("enable-query", true);
 		}
 
-		$this->message($this->lang->get("rcon_info"));
-		if(strtolower($this->getInput($this->lang->get("rcon_enable"), "n", "y/N")) === "y"){
-			$config->set("enable-rcon", true);
-			$password = substr(base64_encode(random_bytes(20)), 3, 10);
-			$config->set("rcon.password", $password);
-			$this->message($this->lang->get("rcon_password") . ": " . $password);
-		}else{
-			$config->set("enable-rcon", false);
-		}
-
 		$config->save();
 
 
 		$this->message($this->lang->get("ip_get"));
 
-		$externalIP = Utils::getIP();
+		$externalIP = Internet::getIP();
 		if($externalIP === false){
 			$externalIP = "unknown (server offline)";
 		}
-		$internalIP = gethostbyname(trim(`hostname`));
+		try{
+			$internalIP = Internet::getInternalIP();
+		}catch(InternetException $e){
+			$internalIP = "unknown (" . $e->getMessage() . ")";
+		}
 
 		$this->error($this->lang->translateString("ip_warning", ["EXTERNAL_IP" => $externalIP, "INTERNAL_IP" => $internalIP]));
 		$this->error($this->lang->get("ip_confirm"));
 		$this->readLine();
 	}
 
-	private function endWizard(){
+	private function endWizard() : void{
 		$this->message($this->lang->get("you_have_finished"));
 		$this->message($this->lang->get("pocketmine_plugins"));
-		$this->message($this->lang->get("pocketmine_will_start"));
+		$this->message($this->lang->translateString("pocketmine_will_start", [\pocketmine\NAME]));
 
 		$this->writeLine();
 		$this->writeLine();
@@ -227,7 +227,7 @@ LICENSE;
 		sleep(4);
 	}
 
-	private function writeLine(string $line = ""){
+	private function writeLine(string $line = "") : void{
 		echo $line . PHP_EOL;
 	}
 
@@ -235,11 +235,11 @@ LICENSE;
 		return trim((string) fgets(STDIN));
 	}
 
-	private function message(string $message){
+	private function message(string $message) : void{
 		$this->writeLine("[*] " . $message);
 	}
 
-	private function error(string $message){
+	private function error(string $message) : void{
 		$this->writeLine("[!] " . $message);
 	}
 
@@ -257,6 +257,4 @@ LICENSE;
 
 		return $input === "" ? $default : $input;
 	}
-
-
 }

@@ -23,12 +23,13 @@ declare(strict_types=1);
 
 namespace pocketmine\item;
 
-use pocketmine\entity\Effect;
-use pocketmine\entity\EffectInstance;
+use pocketmine\entity\effect\Effect;
+use pocketmine\entity\effect\EffectInstance;
+use function mt_rand;
 
 class PoisonousPotato extends Food{
-	public function __construct(int $meta = 0){
-		parent::__construct(self::POISONOUS_POTATO, $meta, "Poisonous Potato");
+	public function __construct(){
+		parent::__construct(self::POISONOUS_POTATO, 0, "Poisonous Potato");
 	}
 
 	public function getFoodRestore() : int{
@@ -42,7 +43,7 @@ class PoisonousPotato extends Food{
 	public function getAdditionalEffects() : array{
 		if(mt_rand(0, 100) > 40){
 			return [
-				new EffectInstance(Effect::getEffect(Effect::POISON), 100)
+				new EffectInstance(Effect::POISON(), 100)
 			];
 		}
 		return [];

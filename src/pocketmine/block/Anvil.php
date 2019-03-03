@@ -23,28 +23,38 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
+use pocketmine\block\utils\BlockDataValidator;
+use pocketmine\block\utils\Fallable;
+use pocketmine\block\utils\FallableTrait;
 use pocketmine\inventory\AnvilInventory;
 use pocketmine\item\Item;
-use pocketmine\item\ItemFactory;
 use pocketmine\item\TieredTool;
 use pocketmine\math\AxisAlignedBB;
+use pocketmine\math\Bearing;
+use pocketmine\math\Facing;
 use pocketmine\math\Vector3;
 use pocketmine\Player;
 
-class Anvil extends Fallable{
+class Anvil extends Transparent implements Fallable{
+	use FallableTrait;
 
 	public const TYPE_NORMAL = 0;
 	public const TYPE_SLIGHTLY_DAMAGED = 4;
 	public const TYPE_VERY_DAMAGED = 8;
 
-	protected $id = self::ANVIL;
+	/** @var int */
+	protected $facing = Facing::NORTH;
 
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
+	protected function writeStateToMeta() : int{
+		return Bearing::fromFacing($this->facing);
 	}
 
-	public function isTransparent() : bool{
-		return true;
+	public function readStateFromData(int $id, int $stateMeta) : void{
+		$this->facing = BlockDataValidator::readLegacyHorizontalFacing($stateMeta);
+	}
+
+	public function getStateBitmask() : int{
+		return 0b11;
 	}
 
 	public function getHardness() : float{
@@ -53,15 +63,6 @@ class Anvil extends Fallable{
 
 	public function getBlastResistance() : float{
 		return 6000;
-	}
-
-	public function getName() : string{
-		static $names = [
-			self::TYPE_NORMAL => "Anvil",
-			self::TYPE_SLIGHTLY_DAMAGED => "Slightly Damaged Anvil",
-			self::TYPE_VERY_DAMAGED => "Very Damaged Anvil"
-		];
-		return $names[$this->meta & 0x0c] ?? "Anvil";
 	}
 
 	public function getToolType() : int{
@@ -73,30 +74,10 @@ class Anvil extends Fallable{
 	}
 
 	public function recalculateBoundingBox() : ?AxisAlignedBB{
-		$inset = 0.125;
-
-		if($this->meta & 0x01){ //east/west
-			return new AxisAlignedBB(
-				$this->x,
-				$this->y,
-				$this->z + $inset,
-				$this->x + 1,
-				$this->y + 1,
-				$this->z + 1 - $inset
-			);
-		}else{
-			return new AxisAlignedBB(
-				$this->x + $inset,
-				$this->y,
-				$this->z,
-				$this->x + 1 - $inset,
-				$this->y + 1,
-				$this->z + 1
-			);
-		}
+		return AxisAlignedBB::one()->squash(Facing::axis(Facing::rotateY($this->facing, false)), 1 / 8);
 	}
 
-	public function onActivate(Item $item, Player $player = null) : bool{
+	public function onInteract(Item $item, int $face, Vector3 $clickVector, ?Player $player = null) : bool{
 		if($player instanceof Player){
 			$player->addWindow(new AnvilInventory($this));
 		}
@@ -104,15 +85,14 @@ class Anvil extends Fallable{
 		return true;
 	}
 
-	public function place(Item $item, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector, Player $player = null) : bool{
-		$direction = ($player !== null ? $player->getDirection() : 0) & 0x03;
-		$this->meta = ($this->meta & 0x0c) | $direction;
-		return $this->getLevel()->setBlock($blockReplace, $this, true, true);
+	public function place(Item $item, Block $blockReplace, Block $blockClicked, int $face, Vector3 $clickVector, ?Player $player = null) : bool{
+		if($player !== null){
+			$this->facing = Facing::rotateY($player->getHorizontalFacing(), true);
+		}
+		return parent::place($item, $blockReplace, $blockClicked, $face, $clickVector, $player);
 	}
 
-	public function getDropsForCompatibleTool(Item $item) : array{
-		return [
-			ItemFactory::get($this->getItemId(), $this->getDamage() >> 2)
-		];
+	public function tickFalling() : ?Block{
+		return null;
 	}
 }

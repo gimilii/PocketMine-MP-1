@@ -25,14 +25,16 @@ namespace pocketmine\event\entity;
 
 use pocketmine\entity\projectile\Projectile;
 use pocketmine\event\Cancellable;
+use pocketmine\event\CancellableTrait;
 
 class ProjectileLaunchEvent extends EntityEvent implements Cancellable{
+	use CancellableTrait;
+
 	/**
 	 * @param Projectile $entity
 	 */
 	public function __construct(Projectile $entity){
 		$this->entity = $entity;
-
 	}
 
 	/**
@@ -41,5 +43,4 @@ class ProjectileLaunchEvent extends EntityEvent implements Cancellable{
 	public function getEntity(){
 		return $this->entity;
 	}
-
 }

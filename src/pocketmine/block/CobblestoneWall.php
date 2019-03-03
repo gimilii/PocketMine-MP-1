@@ -25,17 +25,28 @@ namespace pocketmine\block;
 
 use pocketmine\item\TieredTool;
 use pocketmine\math\AxisAlignedBB;
-use pocketmine\math\Vector3;
+use pocketmine\math\Facing;
 
 class CobblestoneWall extends Transparent{
 	public const NONE_MOSSY_WALL = 0;
 	public const MOSSY_WALL = 1;
+	public const GRANITE_WALL = 2;
+	public const DIORITE_WALL = 3;
+	public const ANDESITE_WALL = 4;
+	public const SANDSTONE_WALL = 5;
+	public const BRICK_WALL = 6;
+	public const STONE_BRICK_WALL = 7;
+	public const MOSSY_STONE_BRICK_WALL = 8;
+	public const NETHER_BRICK_WALL = 9;
+	public const END_STONE_BRICK_WALL = 10;
+	public const PRISMARINE_WALL = 11;
+	public const RED_SANDSTONE_WALL = 12;
+	public const RED_NETHER_BRICK_WALL = 13;
 
-	protected $id = self::COBBLESTONE_WALL;
-
-	public function __construct(int $meta = 0){
-		$this->meta = $meta;
-	}
+	/** @var bool[] facing => dummy */
+	protected $connections = [];
+	/** @var bool */
+	protected $up = false;
 
 	public function getToolType() : int{
 		return BlockToolType::TYPE_PICKAXE;
@@ -49,25 +60,32 @@ class CobblestoneWall extends Transparent{
 		return 2;
 	}
 
-	public function getName() : string{
-		if($this->meta === 0x01){
-			return "Mossy Cobblestone Wall";
+	public function readStateFromWorld() : void{
+		parent::readStateFromWorld();
+
+		foreach(Facing::HORIZONTAL as $facing){
+			$block = $this->getSide($facing);
+			if($block instanceof static or $block instanceof FenceGate or ($block->isSolid() and !$block->isTransparent())){
+				$this->connections[$facing] = true;
+			}else{
+				unset($this->connections[$facing]);
+			}
 		}
 
-		return "Cobblestone Wall";
+		$this->up = $this->getSide(Facing::UP)->getId() !== Block::AIR;
 	}
 
 	protected function recalculateBoundingBox() : ?AxisAlignedBB{
 		//walls don't have any special collision boxes like fences do
 
-		$north = $this->canConnect($this->getSide(Vector3::SIDE_NORTH));
-		$south = $this->canConnect($this->getSide(Vector3::SIDE_SOUTH));
-		$west = $this->canConnect($this->getSide(Vector3::SIDE_WEST));
-		$east = $this->canConnect($this->getSide(Vector3::SIDE_EAST));
+		$north = isset($this->connections[Facing::NORTH]);
+		$south = isset($this->connections[Facing::SOUTH]);
+		$west = isset($this->connections[Facing::WEST]);
+		$east = isset($this->connections[Facing::EAST]);
 
 		$inset = 0.25;
 		if(
-			$this->getSide(Vector3::SIDE_UP)->getId() === Block::AIR and //if there is a block on top, it stays as a post
+			!$this->up and //if there is a block on top, it stays as a post
 			(
 				($north and $south and !$west and !$east) or
 				(!$north and !$south and $west and $east)
@@ -78,17 +96,12 @@ class CobblestoneWall extends Transparent{
 		}
 
 		return new AxisAlignedBB(
-			$this->x + ($west ? 0 : $inset),
-			$this->y,
-			$this->z + ($north ? 0 : $inset),
-			$this->x + 1 - ($east ? 0 : $inset),
-			$this->y + 1.5,
-			$this->z + 1 - ($south ? 0 : $inset)
+			($west ? 0 : $inset),
+			0,
+			($north ? 0 : $inset),
+			1 - ($east ? 0 : $inset),
+			1.5,
+			1 - ($south ? 0 : $inset)
 		);
 	}
-
-	public function canConnect(Block $block){
-		return $block instanceof static or $block instanceof FenceGate or ($block->isSolid() and !$block->isTransparent());
-	}
-
 }
