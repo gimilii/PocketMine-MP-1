@@ -40,8 +40,31 @@ use const M_PI;
 
 class TNT extends Solid{
 
+	/** @var bool */
+	protected $unstable = false; //TODO: Usage unclear, seems to be a weird hack in vanilla
+
+	public function readStateFromData(int $id, int $stateMeta) : void{
+		$this->unstable = $stateMeta !== 0;
+	}
+
+	protected function writeStateToMeta() : int{
+		return $this->unstable ? 1 : 0;
+	}
+
+	public function getStateBitmask() : int{
+		return 0b1;
+	}
+
 	public function getHardness() : float{
 		return 0;
+	}
+
+	public function onBreak(Item $item, ?Player $player = null) : bool{
+		if($this->unstable){
+			$this->ignite();
+			return true;
+		}
+		return parent::onBreak($item, $player);
 	}
 
 	public function onInteract(Item $item, int $face, Vector3 $clickVector, ?Player $player = null) : bool{
@@ -67,7 +90,7 @@ class TNT extends Solid{
 	}
 
 	public function ignite(int $fuse = 80) : void{
-		$this->getLevel()->setBlock($this, BlockFactory::get(Block::AIR));
+		$this->getLevel()->setBlock($this, BlockFactory::get(BlockLegacyIds::AIR));
 
 		$mot = (new Random())->nextSignedFloat() * M_PI * 2;
 		$nbt = EntityFactory::createBaseNBT($this->add(0.5, 0, 0.5), new Vector3(-sin($mot) * 0.02, 0.2, -cos($mot) * 0.02));

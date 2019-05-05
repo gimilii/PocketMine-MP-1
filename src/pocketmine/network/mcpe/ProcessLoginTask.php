@@ -33,7 +33,6 @@ use Mdanter\Ecc\Serializer\PublicKey\DerPublicKeySerializer;
 use Mdanter\Ecc\Serializer\PublicKey\PemPublicKeySerializer;
 use Mdanter\Ecc\Serializer\Signature\DerSignatureSerializer;
 use pocketmine\network\mcpe\protocol\LoginPacket;
-use pocketmine\Player;
 use pocketmine\scheduler\AsyncTask;
 use function assert;
 use function base64_decode;
@@ -59,6 +58,7 @@ use const OPENSSL_ALGO_SHA384;
 use const STR_PAD_LEFT;
 
 class ProcessLoginTask extends AsyncTask{
+	private const TLS_KEY_SESSION = "session";
 
 	public const MOJANG_ROOT_PUBLIC_KEY = "MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE8ELkixyLcwlZryUQcu1TvPOmI2B7vX83ndnWRUaXm74wFfa5f/lwQNTfrLVHa2PmenpGI6JhIMUJaWZrjmMj90NoKNFSNBuKdm8rYiXsfaz3K36x/1U26HpG0ZxK/V1V";
 
@@ -100,8 +100,8 @@ class ProcessLoginTask extends AsyncTask{
 	/** @var string|null */
 	private $handshakeJwt = null;
 
-	public function __construct(Player $player, LoginPacket $packet, bool $authRequired, bool $useEncryption = true){
-		$this->storeLocal($player);
+	public function __construct(NetworkSession $session, LoginPacket $packet, bool $authRequired, bool $useEncryption = true){
+		$this->storeLocal(self::TLS_KEY_SESSION, $session);
 		$this->packet = $packet;
 		$this->authRequired = $authRequired;
 		$this->useEncryption = $useEncryption;
@@ -243,15 +243,15 @@ class ProcessLoginTask extends AsyncTask{
 	}
 
 	public function onCompletion() : void{
-		/** @var Player $player */
-		$player = $this->fetchLocal();
-		if(!$player->isConnected()){
-			$this->worker->getLogger()->error("Player " . $player->getName() . " was disconnected before their login could be verified");
-		}elseif($player->setAuthenticationStatus($this->authenticated, $this->authRequired, $this->error)){
+		/** @var NetworkSession $session */
+		$session = $this->fetchLocal(self::TLS_KEY_SESSION);
+		if(!$session->isConnected()){
+			$this->worker->getLogger()->error("Player " . $session->getDisplayName() . " was disconnected before their login could be verified");
+		}elseif($session->setAuthenticationStatus($this->authenticated, $this->authRequired, $this->error)){
 			if(!$this->useEncryption){
-				$player->getNetworkSession()->onLoginSuccess();
+				$session->onLoginSuccess();
 			}else{
-				$player->getNetworkSession()->enableEncryption($this->aesKey, $this->handshakeJwt);
+				$session->enableEncryption($this->aesKey, $this->handshakeJwt);
 			}
 		}
 	}

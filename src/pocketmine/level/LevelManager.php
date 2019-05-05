@@ -28,9 +28,12 @@ use pocketmine\event\level\LevelInitEvent;
 use pocketmine\event\level\LevelLoadEvent;
 use pocketmine\event\level\LevelUnloadEvent;
 use pocketmine\level\format\io\exception\UnsupportedLevelFormatException;
+use pocketmine\level\format\io\FormatConverter;
 use pocketmine\level\format\io\LevelProvider;
 use pocketmine\level\format\io\LevelProviderManager;
+use pocketmine\level\format\io\WritableLevelProvider;
 use pocketmine\level\generator\Generator;
+use pocketmine\level\generator\GeneratorManager;
 use pocketmine\level\generator\normal\Normal;
 use pocketmine\Server;
 use pocketmine\timings\Timings;
@@ -165,7 +168,7 @@ class LevelManager{
 		$this->server->getLogger()->info($this->server->getLanguage()->translateString("pocketmine.level.unloading", [$level->getDisplayName()]));
 		foreach($level->getPlayers() as $player){
 			if($level === $this->levelDefault or $this->levelDefault === null){
-				$player->close($player->getLeaveMessage(), "Forced default world unload");
+				$player->disconnect("Forced default world unload");
 			}elseif($this->levelDefault instanceof Level){
 				$player->teleport($this->levelDefault->getSafeSpawn());
 			}
@@ -184,12 +187,13 @@ class LevelManager{
 	 * Loads a level from the data directory
 	 *
 	 * @param string $name
+	 * @param bool   $autoUpgrade Converts worlds to the default format if the world's format is not writable / deprecated
 	 *
 	 * @return bool
 	 *
 	 * @throws LevelException
 	 */
-	public function loadLevel(string $name) : bool{
+	public function loadLevel(string $name, bool $autoUpgrade = false) : bool{
 		if(trim($name) === ""){
 			throw new LevelException("Invalid empty world name");
 		}
@@ -213,9 +217,31 @@ class LevelManager{
 		}
 		$providerClass = array_shift($providers);
 
+		/**
+		 * @var LevelProvider $provider
+		 * @see LevelProvider::__construct()
+		 */
+		$provider = new $providerClass($path);
 		try{
-			/** @see LevelProvider::__construct() */
-			$level = new Level($this->server, $name, new $providerClass($path));
+			GeneratorManager::getGenerator($provider->getLevelData()->getGenerator(), true);
+		}catch(\InvalidArgumentException $e){
+			$this->server->getLogger()->error($this->server->getLanguage()->translateString("pocketmine.level.loadError", [$name, "Unknown generator \"" . $provider->getLevelData()->getGenerator() . "\""]));
+			return false;
+		}
+		if(!($provider instanceof WritableLevelProvider)){
+			if(!$autoUpgrade){
+				throw new LevelException("World \"$name\" is in an unsupported format and needs to be upgraded");
+			}
+			$this->server->getLogger()->notice("Upgrading world \"$name\" to new format. This may take a while.");
+
+			$converter = new FormatConverter($provider, LevelProviderManager::getDefault(), $this->server->getDataPath() . "world_conversion_backups", $this->server->getLogger());
+			$provider = $converter->execute();
+
+			$this->server->getLogger()->notice("Upgraded world \"$name\" to new format successfully. Backed up pre-conversion world at " . $converter->getBackupPath());
+		}
+
+		try{
+			$level = new Level($this->server, $name, $provider);
 		}catch(UnsupportedLevelFormatException $e){
 			$this->server->getLogger()->error($this->server->getLanguage()->translateString("pocketmine.level.loadError", [$name, $e->getMessage()]));
 			return false;
@@ -253,10 +279,10 @@ class LevelManager{
 		$providerClass = LevelProviderManager::getDefault();
 
 		$path = $this->server->getDataPath() . "worlds/" . $name . "/";
-		/** @var LevelProvider $providerClass */
+		/** @var WritableLevelProvider $providerClass */
 		$providerClass::generate($path, $name, $seed, $generator, $options);
 
-		/** @see LevelProvider::__construct() */
+		/** @see WritableLevelProvider::__construct() */
 		$level = new Level($this->server, $name, new $providerClass($path));
 		$this->levels[$level->getId()] = $level;
 
@@ -266,33 +292,31 @@ class LevelManager{
 
 		(new LevelLoadEvent($level))->call();
 
-		if(!$backgroundGeneration){
-			return true;
-		}
+		if($backgroundGeneration){
+			$this->server->getLogger()->notice($this->server->getLanguage()->translateString("pocketmine.level.backgroundGeneration", [$name]));
 
-		$this->server->getLogger()->notice($this->server->getLanguage()->translateString("pocketmine.level.backgroundGeneration", [$name]));
+			$spawnLocation = $level->getSpawnLocation();
+			$centerX = $spawnLocation->getFloorX() >> 4;
+			$centerZ = $spawnLocation->getFloorZ() >> 4;
 
-		$spawnLocation = $level->getSpawnLocation();
-		$centerX = $spawnLocation->getFloorX() >> 4;
-		$centerZ = $spawnLocation->getFloorZ() >> 4;
+			$order = [];
 
-		$order = [];
-
-		for($X = -3; $X <= 3; ++$X){
-			for($Z = -3; $Z <= 3; ++$Z){
-				$distance = $X ** 2 + $Z ** 2;
-				$chunkX = $X + $centerX;
-				$chunkZ = $Z + $centerZ;
-				$index = Level::chunkHash($chunkX, $chunkZ);
-				$order[$index] = $distance;
+			for($X = -3; $X <= 3; ++$X){
+				for($Z = -3; $Z <= 3; ++$Z){
+					$distance = $X ** 2 + $Z ** 2;
+					$chunkX = $X + $centerX;
+					$chunkZ = $Z + $centerZ;
+					$index = Level::chunkHash($chunkX, $chunkZ);
+					$order[$index] = $distance;
+				}
 			}
-		}
 
-		asort($order);
+			asort($order);
 
-		foreach($order as $index => $distance){
-			Level::getXZ($index, $chunkX, $chunkZ);
-			$level->populateChunk($chunkX, $chunkZ, true);
+			foreach($order as $index => $distance){
+				Level::getXZ($index, $chunkX, $chunkZ);
+				$level->populateChunk($chunkX, $chunkZ, true);
+			}
 		}
 
 		return true;
@@ -379,14 +403,31 @@ class LevelManager{
 		}
 	}
 
+	/**
+	 * Returns the period after which loaded worlds will be automatically saved to disk.
+	 *
+	 * @return int
+	 */
+	public function getAutoSaveTicks() : int{
+		return $this->autoSaveTicks;
+	}
+
+	/**
+	 * @param int $autoSaveTicks
+	 */
+	public function setAutoSaveTicks(int $autoSaveTicks) : void{
+		if($autoSaveTicks <= 0){
+			throw new \InvalidArgumentException("Autosave ticks must be positive");
+		}
+		$this->autoSaveTicks = $autoSaveTicks;
+	}
+
 	private function doAutoSave() : void{
 		Timings::$worldSaveTimer->startTiming();
 		foreach($this->levels as $level){
 			foreach($level->getPlayers() as $player){
 				if($player->spawned){
 					$player->save();
-				}elseif(!$player->isConnected()){ //TODO: check if this is ever possible
-					$this->server->removePlayer($player);
 				}
 			}
 			$level->save(false);

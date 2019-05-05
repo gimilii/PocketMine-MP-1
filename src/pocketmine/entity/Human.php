@@ -43,6 +43,9 @@ use pocketmine\item\FoodSource;
 use pocketmine\item\Item;
 use pocketmine\item\Totem;
 use pocketmine\level\Level;
+use pocketmine\level\sound\TotemUseSound;
+use pocketmine\level\sound\XpCollectSound;
+use pocketmine\level\sound\XpLevelUpSound;
 use pocketmine\nbt\NBT;
 use pocketmine\nbt\tag\ByteArrayTag;
 use pocketmine\nbt\tag\CompoundTag;
@@ -51,11 +54,12 @@ use pocketmine\nbt\tag\ListTag;
 use pocketmine\nbt\tag\StringTag;
 use pocketmine\network\mcpe\protocol\AddPlayerPacket;
 use pocketmine\network\mcpe\protocol\EntityEventPacket;
-use pocketmine\network\mcpe\protocol\LevelEventPacket;
-use pocketmine\network\mcpe\protocol\LevelSoundEventPacket;
 use pocketmine\network\mcpe\protocol\PlayerListPacket;
 use pocketmine\network\mcpe\protocol\PlayerSkinPacket;
+use pocketmine\network\mcpe\protocol\types\EntityMetadataProperties;
+use pocketmine\network\mcpe\protocol\types\EntityMetadataTypes;
 use pocketmine\network\mcpe\protocol\types\PlayerListEntry;
+use pocketmine\network\mcpe\protocol\types\PlayerMetadataFlags;
 use pocketmine\Player;
 use pocketmine\utils\UUID;
 use function array_filter;
@@ -65,20 +69,12 @@ use function array_values;
 use function ceil;
 use function max;
 use function min;
-use function mt_rand;
 use function random_int;
 use function strlen;
 use const INT32_MAX;
 use const INT32_MIN;
 
 class Human extends Creature implements ProjectileSource, InventoryHolder{
-
-	public const DATA_PLAYER_FLAG_SLEEP = 1;
-	public const DATA_PLAYER_FLAG_DEAD = 2; //TODO: CHECK
-
-	public const DATA_PLAYER_FLAGS = 26;
-
-	public const DATA_PLAYER_BED_POSITION = 28;
 
 	/** @var PlayerInventory */
 	protected $inventory;
@@ -354,7 +350,7 @@ class Human extends Creature implements ProjectileSource, InventoryHolder{
 			if($playSound){
 				$newLevel = $this->getXpLevel();
 				if((int) ($newLevel / 5) > (int) ($oldLevel / 5)){
-					$this->playLevelUpSound($newLevel);
+					$this->level->addSound($this, new XpLevelUpSound($newLevel));
 				}
 			}
 
@@ -446,9 +442,9 @@ class Human extends Creature implements ProjectileSource, InventoryHolder{
 			if($playSound){
 				$newLevel = $this->getXpLevel();
 				if((int) ($newLevel / 5) > (int) ($oldLevel / 5)){
-					$this->playLevelUpSound($newLevel);
+					$this->level->addSound($this, new XpLevelUpSound($newLevel));
 				}elseif($this->getCurrentTotalXp() > $oldTotal){
-					$this->level->broadcastLevelEvent($this, LevelEventPacket::EVENT_SOUND_ORB, mt_rand());
+					$this->level->addSound($this, new XpCollectSound());
 				}
 			}
 
@@ -456,11 +452,6 @@ class Human extends Creature implements ProjectileSource, InventoryHolder{
 		}
 
 		return false;
-	}
-
-	private function playLevelUpSound(int $newLevel) : void{
-		$volume = 0x10000000 * (min(30, $newLevel) / 5); //No idea why such odd numbers, but this works...
-		$this->level->broadcastLevelSoundEvent($this, LevelSoundEventPacket::SOUND_LEVELUP, (int) $volume);
 	}
 
 	/**
@@ -616,8 +607,8 @@ class Human extends Creature implements ProjectileSource, InventoryHolder{
 	protected function initEntity(CompoundTag $nbt) : void{
 		parent::initEntity($nbt);
 
-		$this->setPlayerFlag(self::DATA_PLAYER_FLAG_SLEEP, false);
-		$this->propertyManager->setBlockPos(self::DATA_PLAYER_BED_POSITION, null);
+		$this->setPlayerFlag(PlayerMetadataFlags::SLEEP, false);
+		$this->propertyManager->setBlockPos(EntityMetadataProperties::PLAYER_BED_POSITION, null);
 
 		$this->inventory = new PlayerInventory($this);
 		$this->enderChestInventory = new EnderChestInventory();
@@ -770,7 +761,7 @@ class Human extends Creature implements ProjectileSource, InventoryHolder{
 			$this->addEffect(new EffectInstance(Effect::ABSORPTION(), 5 * 20, 1));
 
 			$this->broadcastEntityEvent(EntityEventPacket::CONSUME_TOTEM);
-			$this->level->broadcastLevelEvent($this->add(0, $this->eyeHeight, 0), LevelEventPacket::EVENT_SOUND_TOTEM);
+			$this->level->addSound($this->add(0, $this->eyeHeight, 0), new TotemUseSound());
 
 			$hand = $this->inventory->getItemInHand();
 			if($hand instanceof Totem){
@@ -800,8 +791,8 @@ class Human extends Creature implements ProjectileSource, InventoryHolder{
 		$nbt->setInt("XpTotal", $this->totalXp);
 		$nbt->setInt("XpSeed", $this->xpSeed);
 
-		$inventoryTag = new ListTag("Inventory", [], NBT::TAG_Compound);
-		$nbt->setTag($inventoryTag);
+		$inventoryTag = new ListTag([], NBT::TAG_Compound);
+		$nbt->setTag("Inventory", $inventoryTag);
 		if($this->inventory !== null){
 			//Normal inventory
 			$slotCount = $this->inventory->getSize() + $this->inventory->getHotbarSize();
@@ -835,17 +826,17 @@ class Human extends Creature implements ProjectileSource, InventoryHolder{
 				}
 			}
 
-			$nbt->setTag(new ListTag("EnderChestInventory", $items, NBT::TAG_Compound));
+			$nbt->setTag("EnderChestInventory", new ListTag($items, NBT::TAG_Compound));
 		}
 
 		if($this->skin !== null){
-			$nbt->setTag(new CompoundTag("Skin", [
-				new StringTag("Name", $this->skin->getSkinId()),
-				new ByteArrayTag("Data", $this->skin->getSkinData()),
-				new ByteArrayTag("CapeData", $this->skin->getCapeData()),
-				new StringTag("GeometryName", $this->skin->getGeometryName()),
-				new ByteArrayTag("GeometryData", $this->skin->getGeometryData())
-			]));
+			$nbt->setTag("Skin", CompoundTag::create()
+				->setString("Name", $this->skin->getSkinId())
+				->setByteArray("Data", $this->skin->getSkinData())
+				->setByteArray("CapeData", $this->skin->getCapeData())
+				->setString("GeometryName", $this->skin->getGeometryName())
+				->setByteArray("GeometryData", $this->skin->getGeometryData())
+			);
 		}
 
 		return $nbt;
@@ -883,7 +874,7 @@ class Human extends Creature implements ProjectileSource, InventoryHolder{
 		$player->sendDataPacket($pk);
 
 		//TODO: Hack for MCPE 1.2.13: DATA_NAMETAG is useless in AddPlayerPacket, so it has to be sent separately
-		$this->sendData($player, [self::DATA_NAMETAG => [self::DATA_TYPE_STRING, $this->getNameTag()]]);
+		$this->sendData($player, [EntityMetadataProperties::NAMETAG => [EntityMetadataTypes::STRING, $this->getNameTag()]]);
 
 		$this->armorInventory->sendContents($player);
 
@@ -895,18 +886,16 @@ class Human extends Creature implements ProjectileSource, InventoryHolder{
 		}
 	}
 
-	public function close() : void{
-		if(!$this->closed){
-			if($this->inventory !== null){
-				$this->inventory->removeAllViewers(true);
-				$this->inventory = null;
-			}
-			if($this->enderChestInventory !== null){
-				$this->enderChestInventory->removeAllViewers(true);
-				$this->enderChestInventory = null;
-			}
-			parent::close();
-		}
+	protected function onDispose() : void{
+		$this->inventory->removeAllViewers(true);
+		$this->enderChestInventory->removeAllViewers(true);
+		parent::onDispose();
+	}
+
+	protected function destroyCycles() : void{
+		$this->inventory = null;
+		$this->enderChestInventory = null;
+		parent::destroyCycles();
 	}
 
 	/**
@@ -917,7 +906,7 @@ class Human extends Creature implements ProjectileSource, InventoryHolder{
 	 * @return bool
 	 */
 	public function getPlayerFlag(int $flagId) : bool{
-		return $this->getDataFlag(self::DATA_PLAYER_FLAGS, $flagId);
+		return $this->getDataFlag(EntityMetadataProperties::PLAYER_FLAGS, $flagId);
 	}
 
 	/**
@@ -927,6 +916,6 @@ class Human extends Creature implements ProjectileSource, InventoryHolder{
 	 * @param bool $value
 	 */
 	public function setPlayerFlag(int $flagId, bool $value = true) : void{
-		$this->setDataFlag(self::DATA_PLAYER_FLAGS, $flagId, $value, self::DATA_TYPE_BYTE);
+		$this->setDataFlag(EntityMetadataProperties::PLAYER_FLAGS, $flagId, $value, EntityMetadataTypes::BYTE);
 	}
 }

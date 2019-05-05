@@ -23,8 +23,8 @@ declare(strict_types=1);
 
 namespace pocketmine\level\generator\populator;
 
-use pocketmine\block\Block;
 use pocketmine\block\BlockFactory;
+use pocketmine\block\BlockLegacyIds;
 use pocketmine\block\Liquid;
 use pocketmine\level\biome\Biome;
 use pocketmine\level\ChunkManager;
@@ -47,8 +47,7 @@ class GroundCover extends Populator{
 					}
 
 					for($y = 127; $y > 0; --$y){
-						$id = $chunk->getBlockId($x, $y, $z);
-						if($id !== Block::AIR and !BlockFactory::get($id)->isTransparent()){
+						if(!BlockFactory::fromFullBlock($chunk->getFullBlock($x, $y, $z))->isTransparent()){
 							break;
 						}
 					}
@@ -56,15 +55,15 @@ class GroundCover extends Populator{
 					$endY = $startY - count($cover);
 					for($y = $startY; $y > $endY and $y >= 0; --$y){
 						$b = $cover[$startY - $y];
-						$id = $chunk->getBlockId($x, $y, $z);
-						if($id === Block::AIR and $b->isSolid()){
+						$id = BlockFactory::fromFullBlock($chunk->getFullBlock($x, $y, $z));
+						if($id->getId() === BlockLegacyIds::AIR and $b->isSolid()){
 							break;
 						}
-						if($b->canBeFlowedInto() and BlockFactory::get($id) instanceof Liquid){
+						if($b->canBeFlowedInto() and $id instanceof Liquid){
 							continue;
 						}
 
-						$chunk->setBlock($x, $y, $z, $b->getId(), $b->getMeta());
+						$chunk->setFullBlock($x, $y, $z, $b->getFullId());
 					}
 				}
 			}

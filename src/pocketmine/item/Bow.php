@@ -29,7 +29,7 @@ use pocketmine\entity\projectile\Projectile;
 use pocketmine\event\entity\EntityShootBowEvent;
 use pocketmine\event\entity\ProjectileLaunchEvent;
 use pocketmine\item\enchantment\Enchantment;
-use pocketmine\network\mcpe\protocol\LevelSoundEventPacket;
+use pocketmine\level\sound\BowShootSound;
 use pocketmine\Player;
 use function intdiv;
 use function min;
@@ -48,7 +48,7 @@ class Bow extends Tool{
 	}
 
 	public function onReleaseUsing(Player $player) : ItemUseResult{
-		if($player->isSurvival() and !$player->getInventory()->contains(ItemFactory::get(Item::ARROW, 0, 1))){
+		if($player->hasFiniteResources() and !$player->getInventory()->contains(ItemFactory::get(Item::ARROW, 0, 1))){
 			return ItemUseResult::FAIL();
 		}
 
@@ -106,12 +106,12 @@ class Bow extends Tool{
 			}
 
 			$ev->getProjectile()->spawnToAll();
-			$player->getLevel()->broadcastLevelSoundEvent($player, LevelSoundEventPacket::SOUND_BOW);
+			$player->getLevel()->addSound($player, new BowShootSound());
 		}else{
 			$entity->spawnToAll();
 		}
 
-		if($player->isSurvival()){
+		if($player->hasFiniteResources()){
 			if(!$infinity){ //TODO: tipped arrows are still consumed when Infinity is applied
 				$player->getInventory()->removeItem(ItemFactory::get(Item::ARROW, 0, 1));
 			}

@@ -139,45 +139,6 @@ abstract class AsyncTask extends \Threaded{
 	}
 
 	/**
-	 * @see AsyncWorker::getFromThreadStore()
-	 *
-	 * @param string $identifier
-	 *
-	 * @return mixed
-	 */
-	public function getFromThreadStore(string $identifier){
-		if($this->worker === null or $this->isFinished()){
-			throw new \BadMethodCallException("Objects stored in AsyncWorker thread-local storage can only be retrieved during task execution");
-		}
-		return $this->worker->getFromThreadStore($identifier);
-	}
-
-	/**
-	 * @see AsyncWorker::saveToThreadStore()
-	 *
-	 * @param string $identifier
-	 * @param mixed  $value
-	 */
-	public function saveToThreadStore(string $identifier, $value) : void{
-		if($this->worker === null or $this->isFinished()){
-			throw new \BadMethodCallException("Objects can only be added to AsyncWorker thread-local storage during task execution");
-		}
-		$this->worker->saveToThreadStore($identifier, $value);
-	}
-
-	/**
-	 * @see AsyncWorker::removeFromThreadStore()
-	 *
-	 * @param string $identifier
-	 */
-	public function removeFromThreadStore(string $identifier) : void{
-		if($this->worker === null or $this->isFinished()){
-			throw new \BadMethodCallException("Objects can only be removed from AsyncWorker thread-local storage during task execution");
-		}
-		$this->worker->removeFromThreadStore($identifier);
-	}
-
-	/**
 	 * Actions to execute when run
 	 */
 	abstract public function onRun() : void;
@@ -223,6 +184,14 @@ abstract class AsyncTask extends \Threaded{
 	}
 
 	/**
+	 * Called from the main thread when the async task experiences an error during onRun(). Use this for things like
+	 * promise rejection.
+	 */
+	public function onError() : void{
+
+	}
+
+	/**
 	 * Saves mixed data in thread-local storage. Data stored using this storage is **only accessible from the thread it
 	 * was stored on**. Data stored using this method will **not** be serialized.
 	 * This can be used to store references to variables which you need later on on the same thread, but not others.
@@ -244,9 +213,10 @@ abstract class AsyncTask extends \Threaded{
 	 * (E.g. a {@link \pocketmine\Level} object is no longer usable because it is unloaded while the AsyncTask is
 	 * executing, or even a plugin might be unloaded).
 	 *
-	 * @param mixed $complexData the data to store
+	 * @param string $key
+	 * @param mixed  $complexData the data to store
 	 */
-	protected function storeLocal($complexData) : void{
+	protected function storeLocal(string $key, $complexData) : void{
 		if(self::$threadLocalStorage === null){
 			/*
 			 * It's necessary to use an object (not array) here because pthreads is stupid. Non-default array statics
@@ -256,7 +226,7 @@ abstract class AsyncTask extends \Threaded{
 			 */
 			self::$threadLocalStorage = new \ArrayObject();
 		}
-		self::$threadLocalStorage[spl_object_id($this)] = $complexData;
+		self::$threadLocalStorage[spl_object_id($this)][$key] = $complexData;
 	}
 
 	/**
@@ -265,16 +235,19 @@ abstract class AsyncTask extends \Threaded{
 	 * If you used storeLocal(), you can use this on the same thread to fetch data stored. This should be used during
 	 * onProgressUpdate() and onCompletion() to fetch thread-local data stored on the parent thread.
 	 *
+	 * @param string $key
+	 *
 	 * @return mixed
 	 *
 	 * @throws \InvalidArgumentException if no data were stored by this AsyncTask instance.
 	 */
-	protected function fetchLocal(){
-		if(self::$threadLocalStorage === null or !isset(self::$threadLocalStorage[spl_object_id($this)])){
+	protected function fetchLocal(string $key){
+		$id = spl_object_id($this);
+		if(self::$threadLocalStorage === null or !isset(self::$threadLocalStorage[$id][$key])){
 			throw new \InvalidArgumentException("No matching thread-local data found on this thread");
 		}
 
-		return self::$threadLocalStorage[spl_object_id($this)];
+		return self::$threadLocalStorage[$id][$key];
 	}
 
 	final public function __destruct(){

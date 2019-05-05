@@ -28,7 +28,9 @@ use pocketmine\level\format\io\BaseLevelProvider;
 use pocketmine\level\format\io\data\JavaLevelData;
 use pocketmine\level\format\io\exception\CorruptedChunkException;
 use pocketmine\level\format\io\LevelData;
+use pocketmine\level\generator\Generator;
 use pocketmine\level\Level;
+use pocketmine\utils\Utils;
 use function assert;
 use function file_exists;
 use function is_dir;
@@ -69,6 +71,7 @@ abstract class RegionLevelProvider extends BaseLevelProvider{
 	}
 
 	public static function generate(string $path, string $name, int $seed, string $generator, array $options = []) : void{
+		Utils::testValidInstance($generator, Generator::class);
 		if(!file_exists($path)){
 			mkdir($path, 0777, true);
 		}
@@ -145,7 +148,7 @@ abstract class RegionLevelProvider extends BaseLevelProvider{
 				$logger = \GlobalLogger::get();
 				$logger->error("Corrupted region file detected: " . $e->getMessage());
 
-				$region->close(false); //Do not write anything to the file
+				$region->close(); //Do not write anything to the file
 
 				$backupPath = $path . ".bak." . time();
 				rename($path, $backupPath);
@@ -156,6 +159,13 @@ abstract class RegionLevelProvider extends BaseLevelProvider{
 			}
 
 			$this->regions[$index] = $region;
+		}
+	}
+
+	protected function unloadRegion(int $regionX, int $regionZ) : void{
+		if(isset($this->regions[$hash = Level::chunkHash($regionX, $regionZ)])){
+			$this->regions[$hash]->close();
+			unset($this->regions[$hash]);
 		}
 	}
 
@@ -208,8 +218,8 @@ abstract class RegionLevelProvider extends BaseLevelProvider{
 		$this->getRegion($regionX, $regionZ)->writeChunk($chunkX & 0x1f, $chunkZ & 0x1f, $this->serializeChunk($chunk));
 	}
 
-	public function getAllChunks() : \Generator{
-		$iterator = new \RegexIterator(
+	private function createRegionIterator() : \RegexIterator{
+		return new \RegexIterator(
 			new \FilesystemIterator(
 				$this->path . '/region/',
 				\FilesystemIterator::CURRENT_AS_PATHNAME | \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::UNIX_PATHS
@@ -217,19 +227,48 @@ abstract class RegionLevelProvider extends BaseLevelProvider{
 			'/\/r\.(-?\d+)\.(-?\d+)\.' . static::getRegionFileExtension() . '$/',
 			\RegexIterator::GET_MATCH
 		);
+	}
+
+	public function getAllChunks(bool $skipCorrupted = false, ?\Logger $logger = null) : \Generator{
+		$iterator = $this->createRegionIterator();
 
 		foreach($iterator as $region){
-			$rX = ((int) $region[1]) << 5;
-			$rZ = ((int) $region[2]) << 5;
+			$regionX = ((int) $region[1]);
+			$regionZ = ((int) $region[2]);
+			$rX = $regionX << 5;
+			$rZ = $regionZ << 5;
 
 			for($chunkX = $rX; $chunkX < $rX + 32; ++$chunkX){
 				for($chunkZ = $rZ; $chunkZ < $rZ + 32; ++$chunkZ){
-					$chunk = $this->loadChunk($chunkX, $chunkZ);
-					if($chunk !== null){
-						yield $chunk;
+					try{
+						$chunk = $this->loadChunk($chunkX, $chunkZ);
+						if($chunk !== null){
+							yield $chunk;
+						}
+					}catch(CorruptedChunkException $e){
+						if(!$skipCorrupted){
+							throw $e;
+						}
+						if($logger !== null){
+							$logger->error("Skipped corrupted chunk $chunkX $chunkZ (" . $e->getMessage() . ")");
+						}
 					}
 				}
 			}
+
+			$this->unloadRegion($regionX, $regionZ);
 		}
+	}
+
+	public function calculateChunkCount() : int{
+		$count = 0;
+		foreach($this->createRegionIterator() as $region){
+			$regionX = ((int) $region[1]);
+			$regionZ = ((int) $region[2]);
+			$this->loadRegion($regionX, $regionZ);
+			$count += $this->getRegion($regionX, $regionZ)->calculateChunkCount();
+			$this->unloadRegion($regionX, $regionZ);
+		}
+		return $count;
 	}
 }

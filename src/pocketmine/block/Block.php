@@ -39,6 +39,7 @@ use pocketmine\math\RayTraceResult;
 use pocketmine\math\Vector3;
 use pocketmine\metadata\Metadatable;
 use pocketmine\metadata\MetadataValue;
+use pocketmine\network\mcpe\protocol\types\RuntimeBlockMapping;
 use pocketmine\Player;
 use pocketmine\plugin\Plugin;
 use pocketmine\tile\TileFactory;
@@ -48,7 +49,7 @@ use function dechex;
 use function get_class;
 use const PHP_INT_MAX;
 
-class Block extends Position implements BlockIds, Metadatable{
+class Block extends Position implements BlockLegacyIds, Metadatable{
 
 	/**
 	 * Returns a new Block instance with the specified ID, meta and position.
@@ -107,6 +108,14 @@ class Block extends Position implements BlockIds, Metadatable{
 		return $this->idInfo->getBlockId();
 	}
 
+	/**
+	 * @internal
+	 * @return int
+	 */
+	public function getFullId() : int{
+		return ($this->getId() << 4) | $this->getMeta();
+	}
+
 	public function asItem() : Item{
 		return ItemFactory::get($this->idInfo->getItemId(), $this->idInfo->getVariant());
 	}
@@ -116,7 +125,7 @@ class Block extends Position implements BlockIds, Metadatable{
 	 * @return int
 	 */
 	public function getRuntimeId() : int{
-		return BlockFactory::toStaticRuntimeId($this->getId(), $this->getMeta());
+		return RuntimeBlockMapping::toStaticRuntimeId($this->getId(), $this->getMeta());
 	}
 
 	/**
@@ -126,6 +135,16 @@ class Block extends Position implements BlockIds, Metadatable{
 		$stateMeta = $this->writeStateToMeta();
 		assert(($stateMeta & ~$this->getStateBitmask()) === 0);
 		return $this->idInfo->getVariant() | $stateMeta;
+	}
+
+
+	/**
+	 * Returns a bitmask used to extract state bits from block metadata.
+	 *
+	 * @return int
+	 */
+	public function getStateBitmask() : int{
+		return 0;
 	}
 
 	protected function writeStateToMeta() : int{
@@ -155,7 +174,7 @@ class Block extends Position implements BlockIds, Metadatable{
 	}
 
 	public function writeStateToWorld() : void{
-		$this->level->getChunkAtPosition($this)->setBlock($this->x & 0xf, $this->y, $this->z & 0xf, $this->getId(), $this->getMeta());
+		$this->level->getChunkAtPosition($this)->setFullBlock($this->x & 0xf, $this->y, $this->z & 0xf, $this->getFullId());
 
 		$tileType = $this->idInfo->getTileClass();
 		$oldTile = $this->level->getTile($this);
@@ -166,15 +185,6 @@ class Block extends Position implements BlockIds, Metadatable{
 		if($oldTile === null and $tileType !== null){
 			$this->level->addTile(TileFactory::create($tileType, $this->level, $this->asVector3()));
 		}
-	}
-
-	/**
-	 * Returns a bitmask used to extract state bits from block metadata.
-	 *
-	 * @return int
-	 */
-	public function getStateBitmask() : int{
-		return 0;
 	}
 
 	/**
@@ -305,7 +315,7 @@ class Block extends Position implements BlockIds, Metadatable{
 		if(($t = $this->level->getTile($this)) !== null){
 			$t->onBlockDestroyed();
 		}
-		return $this->getLevel()->setBlock($this, BlockFactory::get(Block::AIR));
+		return $this->getLevel()->setBlock($this, BlockFactory::get(BlockLegacyIds::AIR));
 	}
 
 
@@ -646,7 +656,7 @@ class Block extends Position implements BlockIds, Metadatable{
 			return $this->getLevel()->getBlock(Vector3::getSide($side, $step));
 		}
 
-		return BlockFactory::get(Block::AIR, 0, Position::fromObject(Vector3::getSide($side, $step)));
+		return BlockFactory::get(BlockLegacyIds::AIR, 0, Position::fromObject(Vector3::getSide($side, $step)));
 	}
 
 	/**

@@ -74,14 +74,19 @@ final class GeneratorManager{
 	 * Returns a class name of a registered Generator matching the given name.
 	 *
 	 * @param string $name
+	 * @param bool   $throwOnMissing @deprecated this is for backwards compatibility only
 	 *
 	 * @return string|Generator Name of class that extends Generator (not an actual Generator object)
+	 * @throws \InvalidArgumentException if the generator type isn't registered
 	 */
-	public static function getGenerator(string $name){
+	public static function getGenerator(string $name, bool $throwOnMissing = false){
 		if(isset(self::$list[$name = strtolower($name)])){
 			return self::$list[$name];
 		}
 
+		if($throwOnMissing){
+			throw new \InvalidArgumentException("Alias \"$name\" does not map to any known generator");
+		}
 		return Normal::class;
 	}
 
@@ -91,15 +96,17 @@ final class GeneratorManager{
 	 * @param string $class Fully qualified name of class that extends \pocketmine\level\generator\Generator
 	 *
 	 * @return string
+	 * @throws \InvalidArgumentException if the class type cannot be matched to a known alias
 	 */
 	public static function getGeneratorName(string $class) : string{
+		Utils::testValidInstance($class, Generator::class);
 		foreach(self::$list as $name => $c){
 			if($c === $class){
 				return $name;
 			}
 		}
 
-		return "unknown";
+		throw new \InvalidArgumentException("Generator class $class is not registered");
 	}
 
 	private function __construct(){

@@ -25,6 +25,7 @@ namespace pocketmine\level;
 
 use pocketmine\block\Block;
 use pocketmine\block\BlockFactory;
+use pocketmine\block\BlockLegacyIds;
 use pocketmine\level\format\Chunk;
 use const INT32_MAX;
 use const INT32_MIN;
@@ -49,12 +50,13 @@ class SimpleChunkManager implements ChunkManager{
 		if($chunk = $this->getChunk($x >> 4, $z >> 4)){
 			return BlockFactory::fromFullBlock($chunk->getFullBlock($x & 0xf, $y, $z & 0xf));
 		}
-		return BlockFactory::get(Block::AIR);
+		return BlockFactory::get(BlockLegacyIds::AIR);
 	}
 
 	public function setBlockAt(int $x, int $y, int $z, Block $block) : bool{
 		if(($chunk = $this->getChunk($x >> 4, $z >> 4)) !== null){
-			return $chunk->setBlock($x & 0xf, $y, $z & 0xf, $block->getId(), $block->getMeta());
+			$chunk->setFullBlock($x & 0xf, $y, $z & 0xf, $block->getFullId());
+			return true;
 		}
 		return false;
 	}

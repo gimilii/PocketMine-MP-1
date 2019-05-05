@@ -26,13 +26,16 @@ namespace pocketmine\network\mcpe;
 #include <rules/DataPacket.h>
 
 use pocketmine\entity\Attribute;
-use pocketmine\entity\Entity;
 use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
+use pocketmine\item\ItemIds;
 use pocketmine\math\Vector3;
+use pocketmine\nbt\tag\CompoundTag;
+use pocketmine\nbt\TreeRoot;
 use pocketmine\network\BadPacketException;
 use pocketmine\network\mcpe\protocol\types\CommandOriginData;
 use pocketmine\network\mcpe\protocol\types\EntityLink;
+use pocketmine\network\mcpe\protocol\types\EntityMetadataTypes;
 use pocketmine\utils\BinaryDataException;
 use pocketmine\utils\BinaryStream;
 use pocketmine\utils\UUID;
@@ -95,13 +98,14 @@ class NetworkBinaryStream extends BinaryStream{
 		$cnt = $auxValue & 0xff;
 
 		$nbtLen = $this->getLShort();
+		/** @var CompoundTag|null $compound */
 		$compound = null;
 		if($nbtLen === 0xffff){
 			$c = $this->getByte();
 			if($c !== 1){
 				throw new BadPacketException("Unexpected NBT count $c");
 			}
-			$compound = (new NetworkNbtSerializer())->read($this->buffer, $this->offset);
+			$compound = (new NetworkNbtSerializer())->read($this->buffer, $this->offset, 512)->getTag();
 		}elseif($nbtLen !== 0){
 			throw new BadPacketException("Unexpected fake NBT length $nbtLen");
 		}
@@ -114,6 +118,10 @@ class NetworkBinaryStream extends BinaryStream{
 		//TODO
 		for($i = 0, $canDestroy = $this->getVarInt(); $i < $canDestroy; ++$i){
 			$this->getString();
+		}
+
+		if($id === ItemIds::SHIELD){
+			$this->getVarLong(); //"blocking tick" (ffs mojang)
 		}
 
 		try{
@@ -138,13 +146,17 @@ class NetworkBinaryStream extends BinaryStream{
 		if($item->hasNamedTag()){
 			$this->putLShort(0xffff);
 			$this->putByte(1); //TODO: some kind of count field? always 1 as of 1.9.0
-			$this->put((new NetworkNbtSerializer())->write($item->getNamedTag()));
+			$this->put((new NetworkNbtSerializer())->write(new TreeRoot($item->getNamedTag())));
 		}else{
 			$this->putLShort(0);
 		}
 
 		$this->putVarInt(0); //CanPlaceOn entry count (TODO)
 		$this->putVarInt(0); //CanDestroy entry count (TODO)
+
+		if($item->getId() === ItemIds::SHIELD){
+			$this->putVarLong(0); //"blocking tick" (ffs mojang)
+		}
 	}
 
 	/**
@@ -165,32 +177,32 @@ class NetworkBinaryStream extends BinaryStream{
 			$type = $this->getUnsignedVarInt();
 			$value = null;
 			switch($type){
-				case Entity::DATA_TYPE_BYTE:
+				case EntityMetadataTypes::BYTE:
 					$value = $this->getByte();
 					break;
-				case Entity::DATA_TYPE_SHORT:
+				case EntityMetadataTypes::SHORT:
 					$value = $this->getSignedLShort();
 					break;
-				case Entity::DATA_TYPE_INT:
+				case EntityMetadataTypes::INT:
 					$value = $this->getVarInt();
 					break;
-				case Entity::DATA_TYPE_FLOAT:
+				case EntityMetadataTypes::FLOAT:
 					$value = $this->getLFloat();
 					break;
-				case Entity::DATA_TYPE_STRING:
+				case EntityMetadataTypes::STRING:
 					$value = $this->getString();
 					break;
-				case Entity::DATA_TYPE_SLOT:
+				case EntityMetadataTypes::SLOT:
 					$value = $this->getSlot();
 					break;
-				case Entity::DATA_TYPE_POS:
+				case EntityMetadataTypes::POS:
 					$value = new Vector3();
 					$this->getSignedBlockPosition($value->x, $value->y, $value->z);
 					break;
-				case Entity::DATA_TYPE_LONG:
+				case EntityMetadataTypes::LONG:
 					$value = $this->getVarLong();
 					break;
-				case Entity::DATA_TYPE_VECTOR3F:
+				case EntityMetadataTypes::VECTOR3F:
 					$value = $this->getVector3();
 					break;
 				default:
@@ -217,25 +229,25 @@ class NetworkBinaryStream extends BinaryStream{
 			$this->putUnsignedVarInt($key); //data key
 			$this->putUnsignedVarInt($d[0]); //data type
 			switch($d[0]){
-				case Entity::DATA_TYPE_BYTE:
+				case EntityMetadataTypes::BYTE:
 					$this->putByte($d[1]);
 					break;
-				case Entity::DATA_TYPE_SHORT:
+				case EntityMetadataTypes::SHORT:
 					$this->putLShort($d[1]); //SIGNED short!
 					break;
-				case Entity::DATA_TYPE_INT:
+				case EntityMetadataTypes::INT:
 					$this->putVarInt($d[1]);
 					break;
-				case Entity::DATA_TYPE_FLOAT:
+				case EntityMetadataTypes::FLOAT:
 					$this->putLFloat($d[1]);
 					break;
-				case Entity::DATA_TYPE_STRING:
+				case EntityMetadataTypes::STRING:
 					$this->putString($d[1]);
 					break;
-				case Entity::DATA_TYPE_SLOT:
+				case EntityMetadataTypes::SLOT:
 					$this->putSlot($d[1]);
 					break;
-				case Entity::DATA_TYPE_POS:
+				case EntityMetadataTypes::POS:
 					$v = $d[1];
 					if($v !== null){
 						$this->putSignedBlockPosition($v->x, $v->y, $v->z);
@@ -243,10 +255,10 @@ class NetworkBinaryStream extends BinaryStream{
 						$this->putSignedBlockPosition(0, 0, 0);
 					}
 					break;
-				case Entity::DATA_TYPE_LONG:
+				case EntityMetadataTypes::LONG:
 					$this->putVarLong($d[1]);
 					break;
-				case Entity::DATA_TYPE_VECTOR3F:
+				case EntityMetadataTypes::VECTOR3F:
 					$this->putVector3Nullable($d[1]);
 					break;
 				default:

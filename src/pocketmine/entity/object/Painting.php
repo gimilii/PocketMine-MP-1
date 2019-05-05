@@ -23,8 +23,8 @@ declare(strict_types=1);
 
 namespace pocketmine\entity\object;
 
-use pocketmine\block\Block;
 use pocketmine\block\BlockFactory;
+use pocketmine\block\BlockLegacyIds;
 use pocketmine\entity\Entity;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\item\Item;
@@ -93,14 +93,14 @@ class Painting extends Entity{
 		return $nbt;
 	}
 
-	public function kill() : void{
-		parent::kill();
+	protected function onDeath() : void{
+		parent::onDeath();
 
 		$drops = true;
 
 		if($this->lastDamageCause instanceof EntityDamageByEntityEvent){
 			$killer = $this->lastDamageCause->getDamager();
-			if($killer instanceof Player and $killer->isCreative()){
+			if($killer instanceof Player and !$killer->hasFiniteResources()){
 				$drops = false;
 			}
 		}
@@ -109,7 +109,7 @@ class Painting extends Entity{
 			//non-living entities don't have a way to create drops generically yet
 			$this->level->dropItem($this, ItemFactory::get(Item::PAINTING));
 		}
-		$this->level->addParticle($this->add(0.5, 0.5, 0.5), new DestroyBlockParticle(BlockFactory::get(Block::PLANKS)));
+		$this->level->addParticle($this->add(0.5, 0.5, 0.5), new DestroyBlockParticle(BlockFactory::get(BlockLegacyIds::PLANKS)));
 	}
 
 	protected function recalculateBoundingBox() : void{

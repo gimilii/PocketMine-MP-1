@@ -23,7 +23,6 @@ declare(strict_types=1);
 
 namespace pocketmine\network\mcpe;
 
-use pocketmine\GameMode;
 use pocketmine\network\AdvancedNetworkInterface;
 use pocketmine\network\BadPacketException;
 use pocketmine\network\mcpe\protocol\ProtocolInfo;
@@ -40,7 +39,6 @@ use raklib\server\ServerInstance;
 use raklib\utils\InternetAddress;
 use function addcslashes;
 use function bin2hex;
-use function count;
 use function implode;
 use function random_bytes;
 use function rtrim;
@@ -99,11 +97,9 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 		$this->server->getTickSleeper()->addNotifier($this->sleeper, function() : void{
 			while($this->interface->handlePacket());
 		});
-		$this->rakLib->start(PTHREADS_INHERIT_CONSTANTS); //HACK: MainLogger needs constants for exception logging
-	}
-
-	public function getConnectionCount() : int{
-		return count($this->sessions);
+		$this->server->getLogger()->debug("Waiting for RakLib to start...");
+		$this->rakLib->startAndWait(PTHREADS_INHERIT_CONSTANTS); //HACK: MainLogger needs constants for exception logging
+		$this->server->getLogger()->debug("RakLib booted successfully");
 	}
 
 	public function setNetwork(Network $network) : void{
@@ -143,7 +139,7 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 	}
 
 	public function openSession(int $sessionId, string $address, int $port, int $clientID) : void{
-		$session = new NetworkSession($this->server, $this, $address, $port);
+		$session = new NetworkSession($this->server, $this->network->getSessionManager(), $this, $address, $port);
 		$this->sessions[$sessionId] = $session;
 		$this->identifiers[spl_object_id($session)] = $sessionId;
 	}
@@ -185,7 +181,7 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 	}
 
 	public function handleRaw(string $address, int $port, string $payload) : void{
-		$this->server->handlePacket($this, $address, $port, $payload);
+		$this->network->processRawPacket($this, $address, $port, $payload);
 	}
 
 	public function sendRawPacket(string $address, int $port, string $payload) : void{
@@ -213,7 +209,7 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 				$info->getMaxPlayerCount(),
 				$this->rakLib->getServerId(),
 				$this->server->getName(),
-				GameMode::toString($this->server->getGamemode())
+				$this->server->getGamemode()->getEnglishName()
 			]) . ";"
 		);
 	}

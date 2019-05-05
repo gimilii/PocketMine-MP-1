@@ -26,12 +26,11 @@ namespace pocketmine\item;
 use Ds\Deque;
 use pocketmine\block\Block;
 use pocketmine\block\BlockFactory;
+use pocketmine\block\BlockLegacyIds;
 use pocketmine\block\utils\BannerPattern;
 use pocketmine\block\utils\DyeColor;
 use pocketmine\nbt\tag\CompoundTag;
-use pocketmine\nbt\tag\IntTag;
 use pocketmine\nbt\tag\ListTag;
-use pocketmine\nbt\tag\StringTag;
 use pocketmine\tile\Banner as TileBanner;
 
 class Banner extends Item{
@@ -55,7 +54,7 @@ class Banner extends Item{
 	}
 
 	public function getBlock() : Block{
-		return BlockFactory::get(Block::STANDING_BANNER);
+		return BlockFactory::get(BlockLegacyIds::STANDING_BANNER);
 	}
 
 	public function getMaxStackSize() : int{
@@ -79,17 +78,20 @@ class Banner extends Item{
 
 	/**
 	 * @param Deque|BannerPattern[] $patterns
+	 *
+	 * @return $this
 	 */
-	public function setPatterns(Deque $patterns) : void{
-		$tag = new ListTag(self::TAG_PATTERNS);
+	public function setPatterns(Deque $patterns) : self{
+		$tag = new ListTag();
 		/** @var BannerPattern $pattern */
 		foreach($patterns as $pattern){
-			$tag->push(new CompoundTag("", [
-				new StringTag(self::TAG_PATTERN_NAME, $pattern->getId()),
-				new IntTag(self::TAG_PATTERN_COLOR, $pattern->getColor()->getInvertedMagicNumber())
-			]));
+			$tag->push(CompoundTag::create()
+				->setString(self::TAG_PATTERN_NAME, $pattern->getId())
+				->setInt(self::TAG_PATTERN_COLOR, $pattern->getColor()->getInvertedMagicNumber())
+			);
 		}
-		$this->setNamedTagEntry($tag);
+		$this->getNamedTag()->setTag(self::TAG_PATTERNS, $tag);
+		return $this;
 	}
 
 	public function getFuelTime() : int{

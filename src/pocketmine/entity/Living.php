@@ -40,16 +40,16 @@ use pocketmine\item\Consumable;
 use pocketmine\item\Durable;
 use pocketmine\item\enchantment\Enchantment;
 use pocketmine\item\Item;
+use pocketmine\level\sound\ItemBreakSound;
 use pocketmine\math\Vector3;
 use pocketmine\math\VoxelRayTrace;
-use pocketmine\nbt\tag\ByteTag;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\nbt\tag\FloatTag;
-use pocketmine\nbt\tag\IntTag;
 use pocketmine\nbt\tag\ListTag;
 use pocketmine\network\mcpe\protocol\EntityEventPacket;
-use pocketmine\network\mcpe\protocol\LevelSoundEventPacket;
 use pocketmine\network\mcpe\protocol\MobEffectPacket;
+use pocketmine\network\mcpe\protocol\types\EntityMetadataFlags;
+use pocketmine\network\mcpe\protocol\types\EntityMetadataProperties;
 use pocketmine\Player;
 use pocketmine\timings\Timings;
 use pocketmine\utils\Binary;
@@ -121,7 +121,7 @@ abstract class Living extends Entity implements Damageable{
 		$activeEffectsTag = $nbt->getListTag("ActiveEffects");
 		if($activeEffectsTag !== null){
 			foreach($activeEffectsTag as $e){
-				$effect = Effect::getEffect($e->getByte("Id"));
+				$effect = Effect::get($e->getByte("Id"));
 				if($effect === null){
 					continue;
 				}
@@ -178,16 +178,15 @@ abstract class Living extends Entity implements Damageable{
 		if(count($this->effects) > 0){
 			$effects = [];
 			foreach($this->effects as $effect){
-				$effects[] = new CompoundTag("", [
-					new ByteTag("Id", $effect->getId()),
-					new ByteTag("Amplifier", Binary::signByte($effect->getAmplifier())),
-					new IntTag("Duration", $effect->getDuration()),
-					new ByteTag("Ambient", $effect->isAmbient() ? 1 : 0),
-					new ByteTag("ShowParticles", $effect->isVisible() ? 1 : 0)
-				]);
+				$effects[] = CompoundTag::create()
+					->setByte("Id", $effect->getId())
+					->setByte("Amplifier", Binary::signByte($effect->getAmplifier()))
+					->setInt("Duration", $effect->getDuration())
+					->setByte("Ambient", $effect->isAmbient() ? 1 : 0)
+					->setByte("ShowParticles", $effect->isVisible() ? 1 : 0);
 			}
 
-			$nbt->setTag(new ListTag("ActiveEffects", $effects));
+			$nbt->setTag("ActiveEffects", new ListTag($effects));
 		}
 
 		return $nbt;
@@ -231,14 +230,14 @@ abstract class Living extends Entity implements Damageable{
 			$ev->call();
 			if($ev->isCancelled()){
 				if($hasExpired and !$ev->getEffect()->hasExpired()){ //altered duration of an expired effect to make it not get removed
-					$this->sendEffectAdd($ev->getEffect(), true);
+					$this->onEffectAdded($ev->getEffect(), true);
 				}
 				return;
 			}
 
 			unset($this->effects[$index]);
 			$effect->getType()->remove($this, $effect);
-			$this->sendEffectRemove($effect);
+			$this->onEffectRemoved($effect);
 
 			$this->recalculateEffectColor();
 		}
@@ -313,7 +312,7 @@ abstract class Living extends Entity implements Damageable{
 		}
 
 		$effect->getType()->add($this, $effect);
-		$this->sendEffectAdd($effect, $oldEffect !== null);
+		$this->onEffectAdded($effect, $oldEffect !== null);
 
 		$this->effects[$index] = $effect;
 
@@ -344,11 +343,11 @@ abstract class Living extends Entity implements Damageable{
 		}
 
 		if(!empty($colors)){
-			$this->propertyManager->setInt(Entity::DATA_POTION_COLOR, Color::mix(...$colors)->toARGB());
-			$this->propertyManager->setByte(Entity::DATA_POTION_AMBIENT, $ambient ? 1 : 0);
+			$this->propertyManager->setInt(EntityMetadataProperties::POTION_COLOR, Color::mix(...$colors)->toARGB());
+			$this->propertyManager->setByte(EntityMetadataProperties::POTION_AMBIENT, $ambient ? 1 : 0);
 		}else{
-			$this->propertyManager->setInt(Entity::DATA_POTION_COLOR, 0);
-			$this->propertyManager->setByte(Entity::DATA_POTION_AMBIENT, 0);
+			$this->propertyManager->setInt(EntityMetadataProperties::POTION_COLOR, 0);
+			$this->propertyManager->setByte(EntityMetadataProperties::POTION_AMBIENT, 0);
 		}
 	}
 
@@ -371,11 +370,11 @@ abstract class Living extends Entity implements Damageable{
 		}
 	}
 
-	protected function sendEffectAdd(EffectInstance $effect, bool $replacesOldEffect) : void{
+	protected function onEffectAdded(EffectInstance $effect, bool $replacesOldEffect) : void{
 
 	}
 
-	protected function sendEffectRemove(EffectInstance $effect) : void{
+	protected function onEffectRemoved(EffectInstance $effect) : void{
 
 	}
 
@@ -547,7 +546,7 @@ abstract class Living extends Entity implements Damageable{
 	private function damageItem(Durable $item, int $durabilityRemoved) : void{
 		$item->applyDamage($durabilityRemoved);
 		if($item->isBroken()){
-			$this->level->broadcastLevelSoundEvent($this, LevelSoundEventPacket::SOUND_BREAK);
+			$this->level->addSound($this, new ItemBreakSound());
 		}
 	}
 
@@ -643,22 +642,17 @@ abstract class Living extends Entity implements Damageable{
 		}
 	}
 
-	public function kill() : void{
-		parent::kill();
-		$this->onDeath();
-		$this->startDeathAnimation();
-	}
-
 	protected function onDeath() : void{
-		$ev = new EntityDeathEvent($this, $this->getDrops());
+		$ev = new EntityDeathEvent($this, $this->getDrops(), $this->getXpDropAmount());
 		$ev->call();
 		foreach($ev->getDrops() as $item){
 			$this->getLevel()->dropItem($this, $item);
 		}
 
 		//TODO: check death conditions (must have been damaged by player < 5 seconds from death)
-		//TODO: allow this number to be manipulated during EntityDeathEvent
-		$this->level->dropExperience($this, $this->getXpDropAmount());
+		$this->level->dropExperience($this, $ev->getXpDropAmount());
+
+		$this->startDeathAnimation();
 	}
 
 	protected function onDeathUpdate(int $tickDiff) : bool{
@@ -777,7 +771,7 @@ abstract class Living extends Entity implements Damageable{
 	 * @return bool
 	 */
 	public function isBreathing() : bool{
-		return $this->getGenericFlag(self::DATA_FLAG_BREATHING);
+		return $this->getGenericFlag(EntityMetadataFlags::BREATHING);
 	}
 
 	/**
@@ -787,7 +781,7 @@ abstract class Living extends Entity implements Damageable{
 	 * @param bool $value
 	 */
 	public function setBreathing(bool $value = true) : void{
-		$this->setGenericFlag(self::DATA_FLAG_BREATHING, $value);
+		$this->setGenericFlag(EntityMetadataFlags::BREATHING, $value);
 	}
 
 	/**
@@ -797,7 +791,7 @@ abstract class Living extends Entity implements Damageable{
 	 * @return int
 	 */
 	public function getAirSupplyTicks() : int{
-		return $this->propertyManager->getShort(self::DATA_AIR);
+		return $this->propertyManager->getShort(EntityMetadataProperties::AIR);
 	}
 
 	/**
@@ -806,7 +800,7 @@ abstract class Living extends Entity implements Damageable{
 	 * @param int $ticks
 	 */
 	public function setAirSupplyTicks(int $ticks) : void{
-		$this->propertyManager->setShort(self::DATA_AIR, $ticks);
+		$this->propertyManager->setShort(EntityMetadataProperties::AIR, $ticks);
 	}
 
 	/**
@@ -814,7 +808,7 @@ abstract class Living extends Entity implements Damageable{
 	 * @return int
 	 */
 	public function getMaxAirSupplyTicks() : int{
-		return $this->propertyManager->getShort(self::DATA_MAX_AIR);
+		return $this->propertyManager->getShort(EntityMetadataProperties::MAX_AIR);
 	}
 
 	/**
@@ -823,7 +817,7 @@ abstract class Living extends Entity implements Damageable{
 	 * @param int $ticks
 	 */
 	public function setMaxAirSupplyTicks(int $ticks) : void{
-		$this->propertyManager->setShort(self::DATA_MAX_AIR, $ticks);
+		$this->propertyManager->setShort(EntityMetadataProperties::MAX_AIR, $ticks);
 	}
 
 	/**
@@ -934,13 +928,13 @@ abstract class Living extends Entity implements Damageable{
 		$this->armorInventory->sendContents($player);
 	}
 
-	public function close() : void{
-		if(!$this->closed){
-			if($this->armorInventory !== null){
-				$this->armorInventory->removeAllViewers(true);
-				$this->armorInventory = null;
-			}
-			parent::close();
-		}
+	protected function onDispose() : void{
+		$this->armorInventory->removeAllViewers(true);
+		parent::onDispose();
+	}
+
+	protected function destroyCycles() : void{
+		$this->armorInventory = null;
+		parent::destroyCycles();
 	}
 }

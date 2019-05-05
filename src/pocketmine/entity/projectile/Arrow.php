@@ -30,11 +30,12 @@ use pocketmine\event\inventory\InventoryPickupArrowEvent;
 use pocketmine\item\Item;
 use pocketmine\item\ItemFactory;
 use pocketmine\level\Level;
+use pocketmine\level\sound\ArrowHitSound;
 use pocketmine\math\RayTraceResult;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\network\mcpe\protocol\EntityEventPacket;
-use pocketmine\network\mcpe\protocol\LevelSoundEventPacket;
 use pocketmine\network\mcpe\protocol\TakeItemEntityPacket;
+use pocketmine\network\mcpe\protocol\types\EntityMetadataFlags;
 use pocketmine\Player;
 use function mt_rand;
 use function sqrt;
@@ -86,11 +87,11 @@ class Arrow extends Projectile{
 	}
 
 	public function isCritical() : bool{
-		return $this->getGenericFlag(self::DATA_FLAG_CRITICAL);
+		return $this->getGenericFlag(EntityMetadataFlags::CRITICAL);
 	}
 
 	public function setCritical(bool $value = true) : void{
-		$this->setGenericFlag(self::DATA_FLAG_CRITICAL, $value);
+		$this->setGenericFlag(EntityMetadataFlags::CRITICAL, $value);
 	}
 
 	public function getResultDamage() : int{
@@ -138,7 +139,7 @@ class Arrow extends Projectile{
 
 	protected function onHit(ProjectileHitEvent $event) : void{
 		$this->setCritical(false);
-		$this->level->broadcastLevelSoundEvent($this, LevelSoundEventPacket::SOUND_BOW_HIT);
+		$this->level->addSound($this, new ArrowHitSound());
 	}
 
 	protected function onHitBlock(Block $blockHit, RayTraceResult $hitResult) : void{
@@ -179,7 +180,7 @@ class Arrow extends Projectile{
 		$item = ItemFactory::get(Item::ARROW, 0, 1);
 
 		$playerInventory = $player->getInventory();
-		if($player->isSurvival() and !$playerInventory->canAddItem($item)){
+		if($player->hasFiniteResources() and !$playerInventory->canAddItem($item)){
 			return;
 		}
 

@@ -23,8 +23,8 @@ declare(strict_types=1);
 
 namespace pocketmine\level\generator\normal;
 
-use pocketmine\block\Block;
 use pocketmine\block\BlockFactory;
+use pocketmine\block\BlockLegacyIds;
 use pocketmine\level\biome\Biome;
 use pocketmine\level\ChunkManager;
 use pocketmine\level\generator\biome\BiomeSelector;
@@ -36,7 +36,6 @@ use pocketmine\level\generator\populator\GroundCover;
 use pocketmine\level\generator\populator\Ore;
 use pocketmine\level\generator\populator\Populator;
 use pocketmine\level\Level;
-use pocketmine\math\Vector3;
 use function exp;
 
 class Normal extends Generator{
@@ -121,14 +120,14 @@ class Normal extends Generator{
 
 		$ores = new Ore();
 		$ores->setOreTypes([
-			new OreType(BlockFactory::get(Block::COAL_ORE), 20, 16, 0, 128),
-			new OreType(BlockFactory::get(Block::IRON_ORE), 20, 8, 0, 64),
-			new OreType(BlockFactory::get(Block::REDSTONE_ORE), 8, 7, 0, 16),
-			new OreType(BlockFactory::get(Block::LAPIS_ORE), 1, 6, 0, 32),
-			new OreType(BlockFactory::get(Block::GOLD_ORE), 2, 8, 0, 32),
-			new OreType(BlockFactory::get(Block::DIAMOND_ORE), 1, 7, 0, 16),
-			new OreType(BlockFactory::get(Block::DIRT), 20, 32, 0, 128),
-			new OreType(BlockFactory::get(Block::GRAVEL), 10, 16, 0, 128)
+			new OreType(BlockFactory::get(BlockLegacyIds::COAL_ORE), 20, 16, 0, 128),
+			new OreType(BlockFactory::get(BlockLegacyIds::IRON_ORE), 20, 8, 0, 64),
+			new OreType(BlockFactory::get(BlockLegacyIds::REDSTONE_ORE), 8, 7, 0, 16),
+			new OreType(BlockFactory::get(BlockLegacyIds::LAPIS_ORE), 1, 6, 0, 32),
+			new OreType(BlockFactory::get(BlockLegacyIds::GOLD_ORE), 2, 8, 0, 32),
+			new OreType(BlockFactory::get(BlockLegacyIds::DIAMOND_ORE), 1, 7, 0, 16),
+			new OreType(BlockFactory::get(BlockLegacyIds::DIRT), 20, 32, 0, 128),
+			new OreType(BlockFactory::get(BlockLegacyIds::GRAVEL), 10, 16, 0, 128)
 		]);
 		$this->populators[] = $ores;
 	}
@@ -148,10 +147,6 @@ class Normal extends Generator{
 				self::$GAUSSIAN_KERNEL[$sx + self::$SMOOTH_SIZE][$sz + self::$SMOOTH_SIZE] = $bellHeight * exp(-($bx * $bx + $bz * $bz) / 2);
 			}
 		}
-	}
-
-	public function getName() : string{
-		return "normal";
 	}
 
 	private function pickBiome(int $x, int $z) : Biome{
@@ -177,6 +172,10 @@ class Normal extends Generator{
 		$chunk = $this->level->getChunk($chunkX, $chunkZ);
 
 		$biomeCache = [];
+
+		$bedrock = BlockFactory::get(BlockLegacyIds::BEDROCK)->getFullId();
+		$stillWater = BlockFactory::get(BlockLegacyIds::STILL_WATER)->getFullId();
+		$stone = BlockFactory::get(BlockLegacyIds::STONE)->getFullId();
 
 		for($x = 0; $x < 16; ++$x){
 			for($z = 0; $z < 16; ++$z){
@@ -217,15 +216,15 @@ class Normal extends Generator{
 
 				for($y = 0; $y < 128; ++$y){
 					if($y === 0){
-						$chunk->setBlock($x, $y, $z, Block::BEDROCK, 0);
+						$chunk->setFullBlock($x, $y, $z, $bedrock);
 						continue;
 					}
 					$noiseValue = $noise[$x][$z][$y] - 1 / $smoothHeight * ($y - $smoothHeight - $minSum);
 
 					if($noiseValue > 0){
-						$chunk->setBlock($x, $y, $z, Block::STONE, 0);
+						$chunk->setFullBlock($x, $y, $z, $stone);
 					}elseif($y <= $this->waterHeight){
-						$chunk->setBlock($x, $y, $z, Block::STILL_WATER, 0);
+						$chunk->setFullBlock($x, $y, $z, $stillWater);
 					}
 				}
 			}
@@ -245,9 +244,5 @@ class Normal extends Generator{
 		$chunk = $this->level->getChunk($chunkX, $chunkZ);
 		$biome = Biome::getBiome($chunk->getBiomeId(7, 7));
 		$biome->populateChunk($this->level, $chunkX, $chunkZ, $this->random);
-	}
-
-	public function getSpawn() : Vector3{
-		return new Vector3(127.5, 128, 127.5);
 	}
 }

@@ -27,6 +27,7 @@ use pocketmine\event\server\LowMemoryEvent;
 use pocketmine\scheduler\DumpWorkerMemoryTask;
 use pocketmine\scheduler\GarbageCollectionTask;
 use pocketmine\timings\Timings;
+use pocketmine\utils\Process;
 use pocketmine\utils\Utils;
 use function arsort;
 use function count;
@@ -177,6 +178,13 @@ class MemoryManager{
 	}
 
 	/**
+	 * @return int
+	 */
+	public function getGlobalMemoryLimit() : int{
+		return $this->globalMemoryLimit;
+	}
+
+	/**
 	 * @return bool
 	 */
 	public function canUseChunkCache() : bool{
@@ -236,7 +244,7 @@ class MemoryManager{
 
 		if(($this->memoryLimit > 0 or $this->globalMemoryLimit > 0) and ++$this->checkTicker >= $this->checkRate){
 			$this->checkTicker = 0;
-			$memory = Utils::getMemoryUsage(true);
+			$memory = Process::getMemoryUsage(true);
 			$trigger = false;
 			if($this->memoryLimit > 0 and $memory[0] > $this->memoryLimit){
 				$trigger = 0;

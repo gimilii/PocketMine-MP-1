@@ -23,14 +23,14 @@ declare(strict_types=1);
 
 namespace pocketmine\level\generator\hell;
 
-use pocketmine\block\Block;
+use pocketmine\block\BlockFactory;
+use pocketmine\block\BlockLegacyIds;
 use pocketmine\level\biome\Biome;
 use pocketmine\level\ChunkManager;
 use pocketmine\level\generator\Generator;
 use pocketmine\level\generator\InvalidGeneratorOptionsException;
 use pocketmine\level\generator\noise\Simplex;
 use pocketmine\level\generator\populator\Populator;
-use pocketmine\math\Vector3;
 use function abs;
 
 class Nether extends Generator{
@@ -78,16 +78,16 @@ class Nether extends Generator{
 		$this->populators[] = $ores;*/
 	}
 
-	public function getName() : string{
-		return "nether";
-	}
-
 	public function generateChunk(int $chunkX, int $chunkZ) : void{
 		$this->random->setSeed(0xdeadbeef ^ ($chunkX << 8) ^ $chunkZ ^ $this->seed);
 
 		$noise = $this->noiseBase->getFastNoise3D(16, 128, 16, 4, 8, 4, $chunkX * 16, 0, $chunkZ * 16);
 
 		$chunk = $this->level->getChunk($chunkX, $chunkZ);
+
+		$bedrock = BlockFactory::get(BlockLegacyIds::BEDROCK)->getFullId();
+		$netherrack = BlockFactory::get(BlockLegacyIds::NETHERRACK)->getFullId();
+		$stillLava = BlockFactory::get(BlockLegacyIds::STILL_LAVA)->getFullId();
 
 		for($x = 0; $x < 16; ++$x){
 			for($z = 0; $z < 16; ++$z){
@@ -97,16 +97,16 @@ class Nether extends Generator{
 
 				for($y = 0; $y < 128; ++$y){
 					if($y === 0 or $y === 127){
-						$chunk->setBlock($x, $y, $z, Block::BEDROCK, 0);
+						$chunk->setFullBlock($x, $y, $z, $bedrock);
 						continue;
 					}
 					$noiseValue = (abs($this->emptyHeight - $y) / $this->emptyHeight) * $this->emptyAmplitude - $noise[$x][$z][$y];
 					$noiseValue -= 1 - $this->density;
 
 					if($noiseValue > 0){
-						$chunk->setBlock($x, $y, $z, Block::NETHERRACK, 0);
+						$chunk->setFullBlock($x, $y, $z, $netherrack);
 					}elseif($y <= $this->waterHeight){
-						$chunk->setBlock($x, $y, $z, Block::STILL_LAVA, 0);
+						$chunk->setFullBlock($x, $y, $z, $stillLava);
 					}
 				}
 			}
@@ -126,9 +126,5 @@ class Nether extends Generator{
 		$chunk = $this->level->getChunk($chunkX, $chunkZ);
 		$biome = Biome::getBiome($chunk->getBiomeId(7, 7));
 		$biome->populateChunk($this->level, $chunkX, $chunkZ, $this->random);
-	}
-
-	public function getSpawn() : Vector3{
-		return new Vector3(127.5, 128, 127.5);
 	}
 }

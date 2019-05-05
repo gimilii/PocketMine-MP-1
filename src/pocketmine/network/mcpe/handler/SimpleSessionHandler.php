@@ -24,7 +24,7 @@ declare(strict_types=1);
 namespace pocketmine\network\mcpe\handler;
 
 use pocketmine\block\ItemFrame;
-use pocketmine\block\SignPost;
+use pocketmine\block\Sign;
 use pocketmine\block\utils\SignText;
 use pocketmine\inventory\transaction\action\InventoryAction;
 use pocketmine\inventory\transaction\CraftingTransaction;
@@ -35,6 +35,7 @@ use pocketmine\nbt\NbtDataException;
 use pocketmine\nbt\tag\StringTag;
 use pocketmine\network\BadPacketException;
 use pocketmine\network\mcpe\NetworkNbtSerializer;
+use pocketmine\network\mcpe\NetworkSession;
 use pocketmine\network\mcpe\protocol\AdventureSettingsPacket;
 use pocketmine\network\mcpe\protocol\AnimatePacket;
 use pocketmine\network\mcpe\protocol\BlockEntityDataPacket;
@@ -78,6 +79,7 @@ use pocketmine\network\mcpe\protocol\types\UseItemOnEntityTransactionData;
 use pocketmine\network\mcpe\protocol\types\UseItemTransactionData;
 use pocketmine\Player;
 use function base64_encode;
+use function fmod;
 use function implode;
 use function json_decode;
 use function json_encode;
@@ -95,6 +97,8 @@ class SimpleSessionHandler extends SessionHandler{
 
 	/** @var Player */
 	private $player;
+	/** @var NetworkSession */
+	private $session;
 
 	/** @var CraftingTransaction|null */
 	protected $craftingTransaction = null;
@@ -104,8 +108,9 @@ class SimpleSessionHandler extends SessionHandler{
 	/** @var Vector3|null */
 	protected $lastRightClickPos = null;
 
-	public function __construct(Player $player){
+	public function __construct(Player $player, NetworkSession $session){
 		$this->player = $player;
+		$this->session = $session;
 	}
 
 	public function handleText(TextPacket $packet) : bool{
@@ -117,7 +122,16 @@ class SimpleSessionHandler extends SessionHandler{
 	}
 
 	public function handleMovePlayer(MovePlayerPacket $packet) : bool{
-		return $this->player->handleMovePlayer($packet);
+		$yaw = fmod($packet->yaw, 360);
+		$pitch = fmod($packet->pitch, 360);
+		if($yaw < 0){
+			$yaw += 360;
+		}
+
+		$this->player->setRotation($yaw, $pitch);
+		$this->player->updateNextPosition($packet->position->subtract(0, 1.62, 0));
+
+		return true;
 	}
 
 	public function handleLevelSoundEventPacketV1(LevelSoundEventPacketV1 $packet) : bool{
@@ -125,7 +139,21 @@ class SimpleSessionHandler extends SessionHandler{
 	}
 
 	public function handleEntityEvent(EntityEventPacket $packet) : bool{
-		return $this->player->handleEntityEvent($packet);
+		$this->player->doCloseInventory();
+
+		switch($packet->event){
+			case EntityEventPacket::EATING_ITEM: //TODO: ignore this and handle it server-side
+				if($packet->data === 0){
+					return false;
+				}
+
+				$this->player->broadcastEntityEvent(EntityEventPacket::EATING_ITEM, $packet->data);
+				break;
+			default:
+				return false;
+		}
+
+		return true;
 	}
 
 	public function handleInventoryTransaction(InventoryTransactionPacket $packet) : bool{
@@ -334,16 +362,24 @@ class SimpleSessionHandler extends SessionHandler{
 				$this->player->jump();
 				return true;
 			case PlayerActionPacket::ACTION_START_SPRINT:
-				$this->player->toggleSprint(true);
+				if(!$this->player->toggleSprint(true)){
+					$this->player->sendData($this->player);
+				}
 				return true;
 			case PlayerActionPacket::ACTION_STOP_SPRINT:
-				$this->player->toggleSprint(false);
+				if(!$this->player->toggleSprint(false)){
+					$this->player->sendData($this->player);
+				}
 				return true;
 			case PlayerActionPacket::ACTION_START_SNEAK:
-				$this->player->toggleSneak(true);
+				if(!$this->player->toggleSneak(true)){
+					$this->player->sendData($this->player);
+				}
 				return true;
 			case PlayerActionPacket::ACTION_STOP_SNEAK:
-				$this->player->toggleSneak(false);
+				if(!$this->player->toggleSneak(false)){
+					$this->player->sendData($this->player);
+				}
 				return true;
 			case PlayerActionPacket::ACTION_START_GLIDE:
 			case PlayerActionPacket::ACTION_STOP_GLIDE:
@@ -387,7 +423,23 @@ class SimpleSessionHandler extends SessionHandler{
 	}
 
 	public function handleAdventureSettings(AdventureSettingsPacket $packet) : bool{
-		return $this->player->handleAdventureSettings($packet);
+		if($packet->entityUniqueId !== $this->player->getId()){
+			return false; //TODO: operators can change other people's permissions using this
+		}
+
+		$handled = false;
+
+		$isFlying = $packet->getFlag(AdventureSettingsPacket::FLYING);
+		if($isFlying !== $this->player->isFlying()){
+			if(!$this->player->toggleFlight($isFlying)){
+				$this->session->syncAdventureSettings($this->player);
+			}
+			$handled = true;
+		}
+
+		//TODO: check for other changes
+
+		return $handled;
 	}
 
 	public function handleBlockEntityData(BlockEntityDataPacket $packet) : bool{
@@ -398,12 +450,13 @@ class SimpleSessionHandler extends SessionHandler{
 
 		$block = $this->player->getLevel()->getBlock($pos);
 		try{
-			$nbt = (new NetworkNbtSerializer())->read($packet->namedtag);
+			$offset = 0;
+			$nbt = (new NetworkNbtSerializer())->read($packet->namedtag, $offset, 512)->getTag();
 		}catch(NbtDataException $e){
 			throw new BadPacketException($e->getMessage(), 0, $e);
 		}
 
-		if($block instanceof SignPost){
+		if($block instanceof Sign){
 			if($nbt->hasTag("Text", StringTag::class)){
 				try{
 					$text = SignText::fromBlob($nbt->getString("Text"));
@@ -411,8 +464,12 @@ class SimpleSessionHandler extends SessionHandler{
 					throw new BadPacketException("Invalid sign text update: " . $e->getMessage(), 0, $e);
 				}
 
-				if(!$block->updateText($this->player, $text)){
-					$this->player->getLevel()->sendBlocks([$this->player], [$block]);
+				try{
+					if(!$block->updateText($this->player, $text)){
+						$this->player->getLevel()->sendBlocks([$this->player], [$block]);
+					}
+				}catch(\UnexpectedValueException $e){
+					throw new BadPacketException($e->getMessage(), 0, $e);
 				}
 
 				return true;
@@ -429,10 +486,10 @@ class SimpleSessionHandler extends SessionHandler{
 	}
 
 	public function handleSetPlayerGameType(SetPlayerGameTypePacket $packet) : bool{
-		if($packet->gamemode !== $this->player->getGamemode()){
+		if($packet->gamemode !== $this->player->getGamemode()->getMagicNumber()){
 			//Set this back to default. TODO: handle this properly
-			$this->player->sendGamemode();
-			$this->player->sendSettings();
+			$this->session->syncGameMode($this->player->getGamemode());
+			$this->session->syncAdventureSettings($this->player);
 		}
 		return true;
 	}
@@ -531,7 +588,8 @@ class SimpleSessionHandler extends SessionHandler{
 	}
 
 	public function handleLevelSoundEvent(LevelSoundEventPacket $packet) : bool{
-		return $this->player->handleLevelSoundEvent($packet);
+		$this->player->getLevel()->broadcastPacketToViewers($this->player->asVector3(), $packet);
+		return true;
 	}
 
 	public function handleNetworkStackLatency(NetworkStackLatencyPacket $packet) : bool{
