@@ -29,26 +29,29 @@ use function json_decode;
 
 class BlockTest extends TestCase{
 
+	/** @var BlockFactory */
+	private $blockFactory;
+
 	public function setUp() : void{
-		BlockFactory::init();
+		$this->blockFactory = new BlockFactory();
 	}
 
 	/**
 	 * Test registering a block which would overwrite another block, without forcing it
 	 */
 	public function testAccidentalOverrideBlock() : void{
-		$block = new MyCustomBlock(new BlockIdentifier(BlockLegacyIds::COBBLESTONE), "Cobblestone");
+		$block = new MyCustomBlock(new BlockIdentifier(BlockLegacyIds::COBBLESTONE), "Cobblestone", BlockBreakInfo::instant());
 		$this->expectException(\InvalidArgumentException::class);
-		BlockFactory::register($block);
+		$this->blockFactory->register($block);
 	}
 
 	/**
 	 * Test registering a block deliberately overwriting another block works as expected
 	 */
 	public function testDeliberateOverrideBlock() : void{
-		$block = new MyCustomBlock(new BlockIdentifier(BlockLegacyIds::COBBLESTONE), "Cobblestone");
-		BlockFactory::register($block, true);
-		self::assertInstanceOf(MyCustomBlock::class, BlockFactory::get($block->getId()));
+		$block = new MyCustomBlock(new BlockIdentifier(BlockLegacyIds::COBBLESTONE), "Cobblestone", BlockBreakInfo::instant());
+		$this->blockFactory->register($block, true);
+		self::assertInstanceOf(MyCustomBlock::class, $this->blockFactory->get($block->getId()));
 	}
 
 	/**
@@ -56,15 +59,15 @@ class BlockTest extends TestCase{
 	 */
 	public function testRegisterNewBlock() : void{
 		for($i = 0; $i < 256; ++$i){
-			if(!BlockFactory::isRegistered($i)){
-				$b = new StrangeNewBlock(new BlockIdentifier($i), "Strange New Block");
-				BlockFactory::register($b);
-				self::assertInstanceOf(StrangeNewBlock::class, BlockFactory::get($b->getId()));
+			if(!$this->blockFactory->isRegistered($i)){
+				$b = new StrangeNewBlock(new BlockIdentifier($i), "Strange New Block", BlockBreakInfo::instant());
+				$this->blockFactory->register($b);
+				self::assertInstanceOf(StrangeNewBlock::class, $this->blockFactory->get($b->getId()));
 				return;
 			}
 		}
 
-		self::assertTrue(false, "Can't test registering new blocks because no unused spaces left");
+		throw new \RuntimeException("Can't test registering new blocks because no unused spaces left");
 	}
 
 	/**
@@ -72,7 +75,7 @@ class BlockTest extends TestCase{
 	 */
 	public function testRegisterIdTooLarge() : void{
 		self::expectException(\RuntimeException::class);
-		BlockFactory::register(new OutOfBoundsBlock(new BlockIdentifier(25555), "Out Of Bounds Block"));
+		$this->blockFactory->register(new OutOfBoundsBlock(new BlockIdentifier(25555), "Out Of Bounds Block", BlockBreakInfo::instant()));
 	}
 
 	/**
@@ -80,7 +83,7 @@ class BlockTest extends TestCase{
 	 */
 	public function testRegisterIdTooSmall() : void{
 		self::expectException(\RuntimeException::class);
-		BlockFactory::register(new OutOfBoundsBlock(new BlockIdentifier(-1), "Out Of Bounds Block"));
+		$this->blockFactory->register(new OutOfBoundsBlock(new BlockIdentifier(-1), "Out Of Bounds Block", BlockBreakInfo::instant()));
 	}
 
 	/**
@@ -90,14 +93,15 @@ class BlockTest extends TestCase{
 	 */
 	public function testBlockFactoryClone() : void{
 		for($i = 0; $i < 256; ++$i){
-			$b1 = BlockFactory::get($i);
-			$b2 = BlockFactory::get($i);
+			$b1 = $this->blockFactory->get($i);
+			$b2 = $this->blockFactory->get($i);
 			self::assertNotSame($b1, $b2);
 		}
 	}
 
 	/**
-	 * @return array
+	 * @return int[][]
+	 * @phpstan-return list<array{int,int}>
 	 */
 	public function blockGetProvider() : array{
 		return [
@@ -116,7 +120,7 @@ class BlockTest extends TestCase{
 	 * @param int $meta
 	 */
 	public function testBlockGet(int $id, int $meta) : void{
-		$block = BlockFactory::get($id, $meta);
+		$block = $this->blockFactory->get($id, $meta);
 
 		self::assertEquals($id, $block->getId());
 		self::assertEquals($meta, $block->getMeta());
@@ -124,7 +128,7 @@ class BlockTest extends TestCase{
 
 	public function testBlockIds() : void{
 		for($i = 0; $i < 256; ++$i){
-			$b = BlockFactory::get($i);
+			$b = $this->blockFactory->get($i);
 			self::assertContains($i, $b->getIdInfo()->getAllBlockIds());
 		}
 	}
@@ -134,7 +138,7 @@ class BlockTest extends TestCase{
 	 * (like freezes) when doing light population.
 	 */
 	public function testLightFiltersValid() : void{
-		foreach(BlockFactory::$lightFilter as $id => $value){
+		foreach($this->blockFactory->lightFilter as $id => $value){
 			self::assertNotNull($value, "Light filter value missing for $id");
 			self::assertLessThanOrEqual(15, $value, "Light filter value for $id is larger than the expected 15");
 			self::assertGreaterThan(0, $value, "Light filter value for $id must be larger than 0");
@@ -143,7 +147,7 @@ class BlockTest extends TestCase{
 
 	public function testConsistency() : void{
 		$list = json_decode(file_get_contents(__DIR__ . '/block_factory_consistency_check.json'), true);
-		$states = BlockFactory::getAllKnownStates();
+		$states = $this->blockFactory->getAllKnownStates();
 		foreach($states as $k => $state){
 			self::assertArrayHasKey($k, $list, "New block state $k (" . $state->getName() . ") - consistency check may need regenerating");
 			self::assertSame($list[$k], $state->getName());

@@ -9,8 +9,6 @@ settings:
   shutdown-message: "Server closed"
   #Allow listing plugins via Query
   query-plugins: true
-  #Show a console message when a plugin uses deprecated API methods
-  deprecated-verbose: true
   #Enable plugin and core profiling by default
   enable-profiling: false
   #Will only add results when tick measurement is below or equal to given value (default 20)
@@ -105,9 +103,6 @@ debug:
 player:
   #Choose whether to enable player data saving.
   save-player-data: true
-  anti-cheat:
-    #If false, will try to prevent speed and noclip cheats. May cause movement issues.
-    allow-movement-cheats: true
 
 level-settings:
   #The default format that levels will use when created
@@ -125,14 +120,16 @@ chunk-ticking:
   per-tick: 40
   #Radius of chunks around a player to tick
   tick-radius: 3
-  light-updates: false
+  #Number of blocks inside ticking areas' subchunks that get ticked every tick. Higher values will accelerate events
+  #like tree and plant growth, but at a higher performance cost.
+  blocks-per-subchunk-per-tick: 3
   #IDs of blocks not to perform random ticking on.
   disable-block-ticking:
     #- 2 # grass
 
 chunk-generation:
   #Max. amount of chunks in the waiting queue to be populated
-  population-queue-size: 8
+  population-queue-size: 32
 
 ticks-per:
   autosave: 6000

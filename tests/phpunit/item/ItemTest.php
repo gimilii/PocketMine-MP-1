@@ -24,15 +24,12 @@ declare(strict_types=1);
 namespace pocketmine\item;
 
 use PHPUnit\Framework\TestCase;
-use pocketmine\block\BlockFactory;
 use pocketmine\item\enchantment\Enchantment;
 use pocketmine\item\enchantment\EnchantmentInstance;
 
 class ItemTest extends TestCase{
 
 	public static function setUpBeforeClass() : void{
-		BlockFactory::init();
-		ItemFactory::init();
 		Enchantment::init();
 	}
 
@@ -40,14 +37,14 @@ class ItemTest extends TestCase{
 	private $item;
 
 	public function setUp() : void{
-		$this->item = ItemFactory::get(Item::DIAMOND_SWORD);
+		$this->item = ItemFactory::getInstance()->get(ItemIds::DIAMOND_SWORD);
 	}
 
 	/**
 	 * Test for issue #1145 (items aren't considered equal after NBT serializing and deserializing
 	 */
 	public function testItemEquals() : void{
-		$item = ItemFactory::get(Item::STONE)->setCustomName("HI");
+		$item = ItemFactory::getInstance()->get(ItemIds::STONE)->setCustomName("HI");
 		$item2 = Item::nbtDeserialize($item->nbtSerialize());
 		self::assertTrue($item2->equals($item));
 		self::assertTrue($item->equals($item2));
@@ -57,9 +54,24 @@ class ItemTest extends TestCase{
 	 * Test that same items without NBT are considered equal
 	 */
 	public function testItemEqualsNoNbt() : void{
-		$item1 = ItemFactory::get(Item::DIAMOND_SWORD);
+		$item1 = ItemFactory::getInstance()->get(ItemIds::DIAMOND_SWORD);
 		$item2 = clone $item1;
 		self::assertTrue($item1->equals($item2));
+	}
+
+	/**
+	 * Tests whether items retain their display properties
+	 * after being deserialized
+	 */
+	public function testItemPersistsDisplayProperties() : void{
+		$lore = ["Line A", "Line B"];
+		$name = "HI";
+		$item = ItemFactory::getInstance()->get(ItemIds::DIAMOND_SWORD);
+		$item->setCustomName($name);
+		$item->setLore($lore);
+		$item = Item::nbtDeserialize($item->nbtSerialize());
+		self::assertTrue($item->getCustomName() === $name);
+		self::assertTrue($item->getLore() === $lore);
 	}
 
 	public function testHasEnchantment() : void{
@@ -95,7 +107,7 @@ class ItemTest extends TestCase{
 					continue 2;
 				}
 			}
-			self::assertTrue(false, "Unknown extra enchantment found: " . $enchantment->getType()->getName() . " x" . $enchantment->getLevel());
+			self::fail("Unknown extra enchantment found: " . $enchantment->getType()->getName() . " x" . $enchantment->getLevel());
 		}
 		self::assertEmpty($enchantments, "Expected all enchantments to be present");
 	}

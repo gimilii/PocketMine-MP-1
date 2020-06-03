@@ -26,7 +26,17 @@ namespace pocketmine\network\mcpe\handler;
 use PHPUnit\Framework\TestCase;
 
 class StupidJsonDecodeTest extends TestCase{
+	/** @var \Closure */
+	private $stupidJsonDecodeFunc;
 
+	public function setUp() : void{
+		$this->stupidJsonDecodeFunc = (new \ReflectionMethod(InGamePacketHandler::class, 'stupid_json_decode'))->getClosure();
+	}
+
+	/**
+	 * @return mixed[][]
+	 * @phpstan-return list<array{string,mixed}>
+	 */
 	public function stupidJsonDecodeProvider() : array{
 		return [
 			["[\n   \"a\",\"b,c,d,e\\\"   \",,0,1,2, false, 0.001]", ['a', 'b,c,d,e"   ', '', 0, 1, 2, false, 0.001]],
@@ -34,7 +44,10 @@ class StupidJsonDecodeTest extends TestCase{
 			["false", false],
 			["NULL", null],
 			['["\",,\"word","a\",,\"word2",]', ['",,"word', 'a",,"word2', '']],
-			['["\",,\"word","a\",,\"word2",""]', ['",,"word', 'a",,"word2', '']]
+			['["\",,\"word","a\",,\"word2",""]', ['",,"word', 'a",,"word2', '']],
+			['["Hello,, PocketMine"]', ['Hello,, PocketMine']],
+			['[,]', ['', '']],
+			['[]', []]
 		];
 	}
 
@@ -46,11 +59,8 @@ class StupidJsonDecodeTest extends TestCase{
 	 *
 	 * @throws \ReflectionException
 	 */
-	public function testStupidJsonDecode(string $brokenJson, $expect){
-		$func = new \ReflectionMethod(SimpleSessionHandler::class, 'stupid_json_decode');
-		$func->setAccessible(true);
-
-		$decoded = $func->invoke(null, $brokenJson, true);
+	public function testStupidJsonDecode(string $brokenJson, $expect) : void{
+		$decoded = ($this->stupidJsonDecodeFunc)($brokenJson, true);
 		self::assertEquals($expect, $decoded);
 	}
 }
